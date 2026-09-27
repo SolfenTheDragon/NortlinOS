@@ -86,10 +86,6 @@ https://wear.googleapis.com/3p_auth/com.nortlinos.wearos
 
 If the watch itself has a browser, SSO also works there without that setting.
 
-> **Upgrading from a pre-1.0.1 build?** The app's package name changed, so Android treats the new
-> version as a separate app. Uninstall the old one first, then sign in again. If you use SSO,
-> replace the old redirect URI on your server with the one above.
-
 You stay signed in. On Audiobookshelf 2.26 and newer, NortlinOS quietly renews your session in the
 background.
 
