@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.nortlinos.wearos.data.repository.LibraryPageMathTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.618Z" hostname="solfen-Latitude-5500" time="0.001">
-  <properties/>
-  <testcase name="full page requests another page" classname="com.nortlinos.wearos.data.repository.LibraryPageMathTest" time="0.0"/>
-  <testcase name="empty page is the end" classname="com.nortlinos.wearos.data.repository.LibraryPageMathTest" time="0.0"/>
-  <testcase name="partial page is the end" classname="com.nortlinos.wearos.data.repository.LibraryPageMathTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

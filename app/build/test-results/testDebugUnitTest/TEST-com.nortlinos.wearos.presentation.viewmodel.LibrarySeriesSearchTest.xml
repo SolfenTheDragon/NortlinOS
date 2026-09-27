@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesSearchTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.664Z" hostname="solfen-Latitude-5500" time="0.003">
-  <properties/>
-  <testcase name="matchesSeriesNameIgnoringCase" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesSearchTest" time="0.001"/>
-  <testcase name="matchesBookTitleAuthorAndNarrator" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesSearchTest" time="0.001"/>
-  <testcase name="blankQueryReturnsEverythingUnchanged" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesSearchTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

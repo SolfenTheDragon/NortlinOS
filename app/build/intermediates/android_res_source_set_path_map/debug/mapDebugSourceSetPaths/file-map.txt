@@ -1,8 +1,0 @@
-com.nortlinos.wearos.app-pngs-0 /home/solfen/Documents/Github/ListenOS-Private/app/build/generated/res/pngs/debug
-com.nortlinos.wearos.app-updated_navigation_xml-1 /home/solfen/Documents/Github/ListenOS-Private/app/build/generated/updated_navigation_xml/debug
-com.nortlinos.wearos.app-packageDebugResources-2 /home/solfen/Documents/Github/ListenOS-Private/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.nortlinos.wearos.app-packageDebugResources-3 /home/solfen/Documents/Github/ListenOS-Private/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.nortlinos.wearos.app-debug-4 /home/solfen/Documents/Github/ListenOS-Private/app/build/intermediates/merged_res/debug/mergeDebugResources
-com.nortlinos.wearos.app-debug-5 /home/solfen/Documents/Github/ListenOS-Private/app/src/debug/res
-com.nortlinos.wearos.app-main-6 /home/solfen/Documents/Github/ListenOS-Private/app/src/main/res
-gradleHome-0 /home/solfen/.gradle
