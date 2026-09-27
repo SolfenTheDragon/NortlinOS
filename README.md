@@ -1,8 +1,6 @@
-# NortlinOS
+<img src="resources/ListenOSIcon.png" alt="NortlinOS logo" width="48" align="left" />
 
-<p align="center">
-  <img src="resources/ListenOSIcon.png" alt="NortlinOS logo" width="128" />
-</p>
+# NortlinOS
 
 **Your Audiobookshelf library, on your wrist.**
 
