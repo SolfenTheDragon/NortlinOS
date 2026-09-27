@@ -131,6 +131,13 @@ For the longest battery life, download books ahead of time instead of streaming.
 | "No headphones" appears even though they're paired | Make sure they are turned on and connected to the watch (not only to your phone), then tap **Connect headphones**. |
 | The tile says "Start a book to resume it from here" | Play any book once; the tile remembers it from then on. |
 
+## Roadmap
+
+Improvements being worked on:
+
+- Power efficiency
+- UI smoothness updates
+
 ## Privacy
 
 NortlinOS talks only to the Audiobookshelf server you sign in to. Your sign-in is stored
