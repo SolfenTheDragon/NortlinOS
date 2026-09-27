@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesGroupingTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.656Z" hostname="solfen-Latitude-5500" time="0.006">
+  <properties/>
+  <testcase name="groupingIgnoresCaseAndSupportsDecimalSequences" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesGroupingTest" time="0.006"/>
+  <testcase name="groupsBySeriesNameAndOrdersBySequence" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesGroupingTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

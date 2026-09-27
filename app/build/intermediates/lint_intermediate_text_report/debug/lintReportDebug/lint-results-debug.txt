@@ -1,0 +1,478 @@
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/AndroidManifest.xml:53: Warning: Consider splitting data tag into multiple tags with individual attributes to avoid confusion [IntentFilterUniqueDataAttributes]
+                <data android:scheme="nortlinos" android:host="oauth" />
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/AndroidManifest.xml:54: Warning: Consider splitting data tag into multiple tags with individual attributes to avoid confusion [IntentFilterUniqueDataAttributes]
+                <data android:scheme="audiobookshelf" android:host="oauth" />
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "IntentFilterUniqueDataAttributes":
+   <intent-filter> <data> tags should only declare a single unique attribute
+   (i.e. scheme OR host, but not both). This better matches the runtime
+   behavior of intent filters, as they combine all of the declared data
+   attributes into a single matcher which is allowed to handle any combination
+   across attribute types.
+
+   For example, the following two <intent-filter> declarations are the same:
+   <intent-filter>
+       <data android:scheme="http" android:host="example.com" />
+       <data android:scheme="https" android:host="example.org" />
+   </intent-filter>
+
+   <intent-filter>
+       <data android:scheme="http"/>
+       <data android:scheme="https"/>
+       <data android:host="example.com" />
+       <data android:host="example.org" />
+   </intent-filter>
+
+   They both handle all of the following:
+   * http://example.com
+   * https://example.com
+   * http://example.org
+   * https://example.org
+
+   The second one better communicates the combining behavior and is clearer to
+   an external reader that one should not rely on the scheme/host being self
+   contained. It is not obvious in the first that http://example.org is also
+   matched, which can lead to confusion (or incorrect behavior) with a more
+   complex set of schemes/hosts.
+
+   Note that this does not apply to host + port, as those must be declared in
+   the same <data> tag and are only associated with each other.
+
+   https://developer.android.com/guide/components/intents-filters
+
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:87: Warning: A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1 [GradleDependency]
+    implementation("androidx.core:core-ktx:1.16.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:88: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.9.3 is available: 2.11.0 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.3")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:89: Warning: A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0 [GradleDependency]
+    implementation("androidx.activity:activity-compose:1.10.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:95: Warning: A newer version of androidx.wear:wear than 1.3.0 is available: 1.4.0 [GradleDependency]
+    implementation("androidx.wear:wear:1.3.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:102: Warning: A newer version of androidx.wear:wear-phone-interactions than 1.0.1 is available: 1.1.1 [GradleDependency]
+    implementation("androidx.wear:wear-phone-interactions:1.0.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:114: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.9.3 is available: 2.11.0 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.3")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:115: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.9.3 is available: 2.11.0 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.3")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:116: Warning: A newer version of androidx.lifecycle:lifecycle-process than 2.9.3 is available: 2.11.0 [GradleDependency]
+    implementation("androidx.lifecycle:lifecycle-process:2.9.3")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:117: Warning: A newer version of androidx.hilt:hilt-navigation-compose than 1.2.0 is available: 1.4.0 [GradleDependency]
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:128: Warning: A newer version of androidx.media3:media3-exoplayer than 1.3.1 is available: 1.11.1 [GradleDependency]
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:129: Warning: A newer version of androidx.media3:media3-session than 1.3.1 is available: 1.11.1 [GradleDependency]
+    implementation("androidx.media3:media3-session:1.3.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:130: Warning: A newer version of androidx.media3:media3-common than 1.3.1 is available: 1.11.1 [GradleDependency]
+    implementation("androidx.media3:media3-common:1.3.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:131: Warning: A newer version of androidx.media3:media3-datasource than 1.3.1 is available: 1.11.1 [GradleDependency]
+    implementation("androidx.media3:media3-datasource:1.3.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:132: Warning: A newer version of androidx.media3:media3-datasource-okhttp than 1.3.1 is available: 1.11.1 [GradleDependency]
+    implementation("androidx.media3:media3-datasource-okhttp:1.3.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:135: Warning: A newer version of androidx.datastore:datastore-preferences than 1.1.1 is available: 1.2.1 [GradleDependency]
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:136: Warning: A newer version of androidx.security:security-crypto than 1.1.0-alpha06 is available: 1.1.0 [GradleDependency]
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:151: Warning: A newer version of androidx.work:work-runtime-ktx than 2.9.0 is available: 2.12.0 [GradleDependency]
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:156: Warning: A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0 [GradleDependency]
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:157: Warning: A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0 [GradleDependency]
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:118: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.9.0 is available: 1.11.0 [NewerVersionAvailable]
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:121: Warning: A newer version of com.squareup.retrofit2:retrofit than 2.11.0 is available: 3.0.0 [NewerVersionAvailable]
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:122: Warning: A newer version of com.squareup.retrofit2:converter-gson than 2.11.0 is available: 3.0.0 [NewerVersionAvailable]
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:123: Warning: A newer version of com.google.code.gson:gson than 2.10.1 is available: 2.14.0 [NewerVersionAvailable]
+    implementation("com.google.code.gson:gson:2.10.1")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:124: Warning: A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.0 [NewerVersionAvailable]
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:125: Warning: A newer version of com.squareup.okhttp3:logging-interceptor than 4.12.0 is available: 5.5.0 [NewerVersionAvailable]
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:148: Warning: A newer version of io.coil-kt:coil-compose than 2.6.0 is available: 2.7.0 [NewerVersionAvailable]
+    implementation("io.coil-kt:coil-compose:2.6.0")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:155: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.9.0 is available: 1.11.0 [NewerVersionAvailable]
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:3: Warning: Overriding @color/black which is marked as private in androidx.wear:wear-input:1.2.0. If deliberate, use tools:override="true", otherwise pick a different name. [PrivateResource]
+    <color name="black">#FF000000</color>
+                 ~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:4: Warning: Overriding @color/white which is marked as private in androidx.wear:wear-input:1.2.0. If deliberate, use tools:override="true", otherwise pick a different name. [PrivateResource]
+    <color name="white">#FFFFFFFF</color>
+                 ~~~~~
+
+   Explanation for issues of type "PrivateResource":
+   Private resources should not be referenced; the may not be present
+   everywhere, and even where they are they may disappear without notice.
+
+   To fix this, copy the resource into your own project instead.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-anydpi-v26: Warning: This folder configuration (v26) is unnecessary; minSdkVersion is 33. Merge all the resources in this folder into mipmap-anydpi. [ObsoleteSdkInt]
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/presentation/screen/Screens.kt:1681: Warning: Reading a value annotated with @FrequentlyChangingValue inside composition [FrequentlyChangingValue from androidx.compose.runtime]
+    val selectedMinutes = pickerState.selectedOptionIndex + 1
+                                      ~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/presentation/screen/Screens.kt:1706: Warning: Reading a value annotated with @FrequentlyChangingValue inside composition [FrequentlyChangingValue from androidx.compose.runtime]
+                    color = if (option == pickerState.selectedOptionIndex) {
+                                                      ~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "FrequentlyChangingValue":
+   Reading a value annotated with @FrequentlyChangingValue inside composition
+   can cause performance issues due to frequent recompositions. To avoid
+   frequent recompositions, instead consider:
+
+   - Using derivedStateOf to filter state changes based on a provided
+   calculation. For example, rather than recomposing on every scroll position
+   change, only recomposing if the scroll position changes from 0 (at the top
+   of the list) to greater than 0 (not at the top of the list), and vice
+   versa.
+   - Using snapshotFlow to create a flow of changes from a provided state.
+   This can then be collected inside a LaunchedEffect, and used to make
+   changes without needing to recompose.
+   - If using Compose UI, read this value inside measure / layout / draw,
+   depending on where it is needed. This will cause invalidation of the
+   corresponding phase, instead of a recomposition. See developer.android.com
+   for more information on Jetpack Compose phases.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:3: Warning: The resource R.color.black appears to be unused [UnusedResources]
+    <color name="black">#FF000000</color>
+           ~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:4: Warning: The resource R.color.white appears to be unused [UnusedResources]
+    <color name="white">#FFFFFFFF</color>
+           ~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:6: Warning: The resource R.color.primary appears to be unused [UnusedResources]
+    <color name="primary">#FFF4A340</color>
+           ~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:7: Warning: The resource R.color.primary_variant appears to be unused [UnusedResources]
+    <color name="primary_variant">#FFC87616</color>
+           ~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:8: Warning: The resource R.color.secondary appears to be unused [UnusedResources]
+    <color name="secondary">#FF65D6C4</color>
+           ~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:10: Warning: The resource R.color.background appears to be unused [UnusedResources]
+    <color name="background">#FF000000</color>
+           ~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:11: Warning: The resource R.color.surface appears to be unused [UnusedResources]
+    <color name="surface">#FF211F1C</color>
+           ~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:12: Warning: The resource R.color.error appears to be unused [UnusedResources]
+    <color name="error">#FFFF8A80</color>
+           ~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:14: Warning: The resource R.color.on_primary appears to be unused [UnusedResources]
+    <color name="on_primary">#FF000000</color>
+           ~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:15: Warning: The resource R.color.on_secondary appears to be unused [UnusedResources]
+    <color name="on_secondary">#FF000000</color>
+           ~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:16: Warning: The resource R.color.on_background appears to be unused [UnusedResources]
+    <color name="on_background">#FFFFFFFF</color>
+           ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:17: Warning: The resource R.color.on_surface appears to be unused [UnusedResources]
+    <color name="on_surface">#FFFFFFFF</color>
+           ~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/colors.xml:18: Warning: The resource R.color.on_error appears to be unused [UnusedResources]
+    <color name="on_error">#FF000000</color>
+           ~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:6: Warning: The resource R.string.login_title appears to be unused [UnusedResources]
+    <string name="login_title">Connect to Server</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:7: Warning: The resource R.string.login_server_url appears to be unused [UnusedResources]
+    <string name="login_server_url">Server URL</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:8: Warning: The resource R.string.login_username appears to be unused [UnusedResources]
+    <string name="login_username">Username</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:9: Warning: The resource R.string.login_password appears to be unused [UnusedResources]
+    <string name="login_password">Password</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:10: Warning: The resource R.string.login_connect appears to be unused [UnusedResources]
+    <string name="login_connect">Connect</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:11: Warning: The resource R.string.login_error_generic appears to be unused [UnusedResources]
+    <string name="login_error_generic">Login failed. Check your server URL and credentials.</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:12: Warning: The resource R.string.login_error_empty_fields appears to be unused [UnusedResources]
+    <string name="login_error_empty_fields">Please fill in all fields.</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:14: Warning: The resource R.string.library_title appears to be unused [UnusedResources]
+    <string name="library_title">Libraries</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:15: Warning: The resource R.string.library_empty appears to be unused [UnusedResources]
+    <string name="library_empty">No libraries found.</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:16: Warning: The resource R.string.library_loading appears to be unused [UnusedResources]
+    <string name="library_loading">Loading libraries…</string>
+            ~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:18: Warning: The resource R.string.library_items_empty appears to be unused [UnusedResources]
+    <string name="library_items_empty">No books found in this library.</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:19: Warning: The resource R.string.library_items_loading appears to be unused [UnusedResources]
+    <string name="library_items_loading">Loading books…</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:20: Warning: The resource R.string.library_items_downloaded appears to be unused [UnusedResources]
+    <string name="library_items_downloaded">Downloaded</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:22: Warning: The resource R.string.book_detail_play appears to be unused [UnusedResources]
+    <string name="book_detail_play">Play</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:23: Warning: The resource R.string.book_detail_download appears to be unused [UnusedResources]
+    <string name="book_detail_download">Download</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:24: Warning: The resource R.string.book_detail_downloading appears to be unused [UnusedResources]
+    <string name="book_detail_downloading">Downloading…</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:25: Warning: The resource R.string.book_detail_downloaded appears to be unused [UnusedResources]
+    <string name="book_detail_downloaded">Downloaded</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:26: Warning: The resource R.string.book_detail_delete_download appears to be unused [UnusedResources]
+    <string name="book_detail_delete_download">Delete Download</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:27: Warning: The resource R.string.book_detail_no_description appears to be unused [UnusedResources]
+    <string name="book_detail_no_description">No description available.</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:29: Warning: The resource R.string.player_loading appears to be unused [UnusedResources]
+    <string name="player_loading">Loading playback…</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:30: Warning: The resource R.string.player_error appears to be unused [UnusedResources]
+    <string name="player_error">Unable to start playback.</string>
+            ~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:32: Warning: The resource R.string.generic_retry appears to be unused [UnusedResources]
+    <string name="generic_retry">Retry</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:33: Warning: The resource R.string.generic_error appears to be unused [UnusedResources]
+    <string name="generic_error">Something went wrong.</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/values/strings.xml:34: Warning: The resource R.string.generic_logout appears to be unused [UnusedResources]
+    <string name="generic_logout">Log out</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests=true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests=true.
+
+   Available options:
+
+   **skip-libraries** (default is true):
+   Whether the unused resource check should skip reporting unused resources in libraries.
+
+   Many libraries will declare resources that are part of the library surface; other modules depending on the library will also reference the resources. To avoid reporting all these resources as unused (in the context of a library), the unused resource check normally skips reporting unused resources in libraries. Instead, run the unused resource check on the consuming app module (along with `checkDependencies=true`).
+
+   However, there are cases where you want to check that all the resources declared in a library are used; in that case, you can disable the skip option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UnusedResources">
+           <option name="skip-libraries" value="true" />
+       </issue>
+   </lint>
+   ```
+
+/home/solfen/Documents/Github/ListenOS-Private/app/build.gradle.kts:47: Warning: If enabling minification, also set isShrinkResources = true [NotShrinkingResources]
+            isMinifyEnabled = true
+            ~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NotShrinkingResources":
+   When minification / dex optimization is enabled, you should also enable
+   resource shrinking, since it enables considerable download and storage
+   savings, and optimizes your app's resource table.
+
+   https://developer.android.com/topic/performance/app-optimization/enable-app-optimization
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-hdpi/ic_launcher_round.png: Warning: Launcher icon used as round icon did not have a circular shape [IconLauncherShape]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-mdpi/ic_launcher_round.png: Warning: Launcher icon used as round icon did not have a circular shape [IconLauncherShape]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png: Warning: Launcher icon used as round icon did not have a circular shape [IconLauncherShape]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png: Warning: Launcher icon used as round icon did not have a circular shape [IconLauncherShape]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png: Warning: Launcher icon used as round icon did not have a circular shape [IconLauncherShape]
+
+   Explanation for issues of type "IconLauncherShape":
+   According to the Android Design Guide
+   (https://d.android.com/r/studio-ui/designer/material/iconography) your
+   launcher icons should "use a distinct silhouette", a "three-dimensional,
+   front view, with a slight perspective as if viewed from above, so that
+   users perceive some depth."
+
+   The unique silhouette implies that your launcher icon should not be a
+   filled square.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:2: Warning: The application adaptive icon is missing a monochrome tag [MonochromeLauncherIcon]
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+^
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml:2: Warning: The application adaptive roundIcon is missing a monochrome tag [MonochromeLauncherIcon]
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+^
+
+   Explanation for issues of type "MonochromeLauncherIcon":
+   The system may use the coloring of the user's chosen wallpaper and theme to
+   tint app icons. Providing a <monochrome> layer (which will be used for
+   tinting) for every adaptive icon is strongly recommended, otherwise Android
+   16 QPR 2 and above will simply tint the color version of the icon, which
+   may look unusual. Devices running earlier Android versions will (with no
+   monochrome layer) show the untinted color icon for your app, which will
+   look inconsistent.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-hdpi/ic_launcher_round.png: Warning: The following unrelated icon files have identical contents: ic_launcher.png, ic_launcher_round.png [IconDuplicates]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-mdpi/ic_launcher_round.png: Warning: The following unrelated icon files have identical contents: ic_launcher.png, ic_launcher_round.png [IconDuplicates]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png: Warning: The following unrelated icon files have identical contents: ic_launcher.png, ic_launcher_round.png [IconDuplicates]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png: Warning: The following unrelated icon files have identical contents: ic_launcher.png, ic_launcher_round.png [IconDuplicates]
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png: Warning: The following unrelated icon files have identical contents: ic_launcher.png, ic_launcher_round.png [IconDuplicates]
+
+   Explanation for issues of type "IconDuplicates":
+   If an icon is repeated under different names, you can consolidate and just
+   use one of the icons and delete the others to make your application
+   smaller. However, duplicated icons usually are not intentional and can
+   sometimes point to icons that were accidentally overwritten or accidentally
+   not updated.
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/service/OidcAuthorizer.kt:137: Warning: Avoid using FLAG_ACTIVITY_NEW_TASK and FLAG_ACTIVITY_CLEAR_TOP [WearRecents]
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                             ~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "WearRecents":
+   In recents, correctly represent your app's activities, consistent with
+   device implementation.
+
+   https://developer.android.com/training/wearables/apps/launcher
+
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/service/OidcAuthorizer.kt:120: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+        WearOAuthRequests.create(packageName, Uri.parse(authorizationUrl))
+                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/service/OidcAuthorizer.kt:135: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authorizationUrl))
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/service/PlaybackService.kt:477: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+                        .setMediaUri(Uri.parse(uri))
+                                     ~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/presentation/screen/Screens.kt:2361: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+    runCatching { Uri.parse(serverUrl).host }.getOrNull().orEmpty().ifBlank { serverUrl }
+                  ~~~~~~~~~~~~~~~~~~~~
+/home/solfen/Documents/Github/ListenOS-Private/app/src/main/java/com/nortlinos/wearos/tile/TileCover.kt:25: Warning: Use the KTX extension function Bitmap.scale instead? [UseKtx]
+        val scaled = Bitmap.createScaledBitmap(cropped, SIZE_PX, SIZE_PX, true)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UseKtx":
+   The Android KTX libraries decorates the Android platform SDK as well as
+   various libraries with more convenient extension functions available from
+   Kotlin, allowing you to use default parameters, named parameters, and
+   more.
+
+   Available options:
+
+   **remove-defaults** (default is true):
+   Whether to skip arguments that match the defaults provided by the extension.
+
+   Extensions often provide default values for some of the parameters. For example:
+   ```kotlin
+   fun Path.readLines(charset: Charset = Charsets.UTF_8): List<String> { return Files.readAllLines(this, charset) }
+   ```
+   This lint check will by default automatically omit parameters that match the default, so if your code was calling
+
+   ```kotlin
+   Files.readAllLines(file, Charset.UTF_8)
+   ```
+   lint would replace this with
+   ```kotlin
+   file.readLines()
+   ```
+   rather than
+
+   ```kotlin
+   file.readLines(Charset.UTF_8
+   ```
+   You can turn this behavior off using this option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="remove-defaults" value="true" />
+       </issue>
+   </lint>
+   ```
+
+   **require-present** (default is true):
+   Whether to only offer extensions already available.
+
+   This option lets you only have lint suggest extension replacements if those extensions are already available on the class path (in other words, you're already depending on the library containing the extension method.)
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="require-present" value="true" />
+       </issue>
+   </lint>
+   ```
+
+0 errors, 90 warnings

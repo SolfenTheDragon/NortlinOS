@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.data.repository.ServerIdentityTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.624Z" hostname="solfen-Latitude-5500" time="0.002">
+  <properties/>
+  <testcase name="normalization removes whitespace and trailing slashes" classname="com.nortlinos.wearos.data.repository.ServerIdentityTest" time="0.0"/>
+  <testcase name="different servers retain different identities" classname="com.nortlinos.wearos.data.repository.ServerIdentityTest" time="0.001"/>
+  <testcase name="matching ignores only trailing slash differences" classname="com.nortlinos.wearos.data.repository.ServerIdentityTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

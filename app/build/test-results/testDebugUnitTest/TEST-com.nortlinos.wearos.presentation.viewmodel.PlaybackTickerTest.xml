@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.viewmodel.PlaybackTickerTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.672Z" hostname="solfen-Latitude-5500" time="0.001">
+  <properties/>
+  <testcase name="does not tick during background playback" classname="com.nortlinos.wearos.presentation.viewmodel.PlaybackTickerTest" time="0.0"/>
+  <testcase name="ticks while playing and visible" classname="com.nortlinos.wearos.presentation.viewmodel.PlaybackTickerTest" time="0.0"/>
+  <testcase name="does not tick in ambient always-on mode" classname="com.nortlinos.wearos.presentation.viewmodel.PlaybackTickerTest" time="0.001"/>
+  <testcase name="does not tick while paused" classname="com.nortlinos.wearos.presentation.viewmodel.PlaybackTickerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

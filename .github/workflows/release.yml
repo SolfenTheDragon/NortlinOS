@@ -1,0 +1,107 @@
+name: Release
+
+# Builds a release APK and publishes it as a GitHub Release.
+#
+# Trigger with either:
+#   - a version tag push, e.g. `git tag v1.2.3 && git push origin v1.2.3`
+#   - the "Run workflow" button, supplying a version manually
+#
+# Signing (optional): set these repository secrets to produce a properly signed APK instead of an
+# unsigned one:
+#   RELEASE_KEYSTORE_BASE64   - `base64 -w0 your-release.jks`
+#   RELEASE_KEYSTORE_PASSWORD
+#   RELEASE_KEY_ALIAS
+#   RELEASE_KEY_PASSWORD
+# Without them the workflow still runs and publishes an unsigned APK for manual signing.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name to stamp (e.g. 1.2.3). Defaults to the pushed tag."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # The secrets context is unavailable in step-level `if`, so resolve the check once here.
+      HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            NAME="${{ inputs.version }}"
+          else
+            NAME="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run unit tests
+        run: ./gradlew test --no-daemon
+
+      - name: Decode release keystore
+        id: keystore
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "path=$RUNNER_TEMP/release.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble release APK
+        env:
+          RELEASE_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease bundleRelease --no-daemon \
+            -PversionCode=${{ steps.version.outputs.code }} \
+            -PversionName=${{ steps.version.outputs.name }}
+
+      - name: Locate artifacts
+        id: apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -maxdepth 1 -name "*.apk" | head -1)
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          cp "$APK_PATH" "NortlinOS-${{ steps.version.outputs.name }}.apk"
+          # The AAB is what Play Console accepts; the APK stays for direct sideloading.
+          AAB_PATH=$(find app/build/outputs/bundle/release -maxdepth 1 -name "*.aab" | head -1)
+          cp "$AAB_PATH" "NortlinOS-${{ steps.version.outputs.name }}.aab"
+
+      - name: Verify APK signature
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          "$APKSIGNER" verify --print-certs -v "NortlinOS-${{ steps.version.outputs.name }}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "NortlinOS ${{ steps.version.outputs.name }}"
+          tag_name: "v${{ steps.version.outputs.name }}"
+          generate_release_notes: true
+          files: |
+            NortlinOS-${{ steps.version.outputs.name }}.apk
+            NortlinOS-${{ steps.version.outputs.name }}.aab
+          body: |
+            ${{ steps.keystore.outputs.path == '' && '> ⚠️ Built without a signing secret configured, so this APK is **unsigned**. Sign it yourself before installing, or add the `RELEASE_KEYSTORE_BASE64`/`RELEASE_KEYSTORE_PASSWORD`/`RELEASE_KEY_ALIAS`/`RELEASE_KEY_PASSWORD` repository secrets so future releases are signed automatically.' || '' }}

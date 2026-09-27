@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.service.SleepTimerMathTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.824Z" hostname="solfen-Latitude-5500" time="0.025">
+  <properties/>
+  <testcase name="remaining time is deadline minus current time" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.001"/>
+  <testcase name="timer emits expiry and becomes inactive" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.023"/>
+  <testcase name="wake lands on the boundary where the displayed value changes" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="displayed minutes round up and never reach zero" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="wakes once per displayed minute instead of once per second" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="wake interval always advances the timer and is capped at one minute" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="timer retains configured duration for reset" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="remaining time never becomes negative" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <testcase name="final wake lands exactly on expiry" classname="com.nortlinos.wearos.service.SleepTimerMathTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

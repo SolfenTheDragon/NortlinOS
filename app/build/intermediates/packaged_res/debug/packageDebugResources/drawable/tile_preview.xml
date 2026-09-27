@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stylised Now Playing tile for the tile picker: title, book card, and Resume edge button. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M96,0a96,96 0,1 1,0 192a96,96 0,1 1,0 -192z" />
+    <path
+        android:fillColor="#FFD4C8BA"
+        android:pathData="M72,26h48a4,4 0,0 1,0 8h-48a4,4 0,0 1,0 -8z" />
+    <path
+        android:fillColor="#FF2E2B27"
+        android:pathData="M40,52h112a20,20 0,0 1,20 20v32a20,20 0,0 1,-20 20h-112a20,20 0,0 1,-20 -20v-32a20,20 0,0 1,20 -20z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,70h96a5,5 0,0 1,0 10h-96a5,5 0,0 1,0 -10z" />
+    <path
+        android:fillColor="#FFD4C8BA"
+        android:pathData="M40,94h64a4,4 0,0 1,0 8h-64a4,4 0,0 1,0 -8z" />
+    <path
+        android:fillColor="#FFF4A340"
+        android:pathData="M44,146h104a8,8 0,0 1,8 8c0,18 -26,32 -60,32s-60,-14 -60,-32a8,8 0,0 1,8 -8z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M72,158h48a4,4 0,0 1,0 8h-48a4,4 0,0 1,0 -8z" />
+</vector>

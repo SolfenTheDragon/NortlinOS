@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.service.SleepTimerAlarmTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.805Z" hostname="solfen-Latitude-5500" time="0.017">
+  <properties/>
+  <testcase name="restarting the timer reschedules the wakeup and ignores the old alarm" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.009"/>
+  <testcase name="cancelling a timer cancels the wakeup" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.0"/>
+  <testcase name="a stale alarm from a cancelled timer is ignored" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.0"/>
+  <testcase name="alarm expires the timer even though the countdown has not woken" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.006"/>
+  <testcase name="starting a timer schedules a wakeup at the deadline" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.0"/>
+  <testcase name="an alarm that fires before the deadline does not expire the timer" classname="com.nortlinos.wearos.service.SleepTimerAlarmTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

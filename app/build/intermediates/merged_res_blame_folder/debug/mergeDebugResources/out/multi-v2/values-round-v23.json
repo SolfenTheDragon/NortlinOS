@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.nortlinos.wearos.app-mergeDebugResources-73:/values-round-v23/values-round-v23.xml",
+            "map": [
+                {
+                    "source": "/home/solfen/.gradle/caches/9.8.0/transforms/35f23d2de29f4defa9ae3ef3daa5c8d8/transformed/wear-1.3.0/res/values-round-v23/values-round-v23.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "84",
+                        "endOffsets": "135"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.621Z" hostname="solfen-Latitude-5500" time="0.001">
+  <properties/>
+  <testcase name="equal timestamps never discard a dirty local update" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.001"/>
+  <testcase name="newer remote progress is pulled when local is clean" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.0"/>
+  <testcase name="pending conflict is not pushed even once local becomes newer" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.0"/>
+  <testcase name="newer remote and dirty local preserves both as conflict" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.0"/>
+  <testcase name="resolved conflict pushes normally" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.0"/>
+  <testcase name="dirty newer local progress is pushed" classname="com.nortlinos.wearos.data.repository.ProgressConflictResolverTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

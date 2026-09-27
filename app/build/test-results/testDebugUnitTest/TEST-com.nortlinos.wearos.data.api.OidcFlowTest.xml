@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.data.api.OidcFlowTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.553Z" hostname="solfen-Latitude-5500" time="0.012">
+  <properties/>
+  <testcase name="missing state is rejected" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.005"/>
+  <testcase name="generated verifiers are unpadded url safe and unique" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="code challenge matches the RFC 7636 S256 example" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.001"/>
+  <testcase name="provider error without a description still names the error" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="provider error is surfaced with its description" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.001"/>
+  <testcase name="redirect from the phone companion is accepted" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="authorize query requests the mobile pkce flow" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.002"/>
+  <testcase name="openid is advertised only when listed in auth methods" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.001"/>
+  <testcase name="redirect yields the authorization code" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="cancelled sign in reports a failure rather than crashing" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.001"/>
+  <testcase name="button text falls back when the server supplies none" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="mismatched state is rejected so a stale response cannot be exchanged" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="query values are percent decoded and fragments ignored" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.0"/>
+  <testcase name="wear redirect uri carries the package name" classname="com.nortlinos.wearos.data.api.OidcFlowTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

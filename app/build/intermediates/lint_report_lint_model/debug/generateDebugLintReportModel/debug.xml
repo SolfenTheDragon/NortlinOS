@@ -1,0 +1,31 @@
+<variant
+    name="debug"
+    package="com.nortlinos.wearos"
+    minSdkVersion="33"
+    targetSdkVersion="35"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/debug/processDebugMainManifest/AndroidManifest.xml"
+    manifestMergeReport="build/outputs/logs/manifest-merger-debug-report.txt"
+    proguardFiles="build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-9.4.1"
+    partialResultsDir="build/intermediates/lint_partial_results/debug/lintAnalyzeDebug/out">
+  <buildFeatures/>
+  <sourceProviders>
+    <sourceProvider
+        manifests="src/main/AndroidManifest.xml"
+        javaDirectories="src/main/java:src/debug/java:src/main/kotlin:src/debug/kotlin"
+        resDirectories="src/main/res:src/debug/res"
+        assetsDirectories="src/main/assets:src/debug/assets"
+        keepRulesDirectories="src/main/keepRules:src/debug/keepRules"/>
+  </sourceProviders>
+  <testSourceProviders>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <artifact
+      classOutputs="build/intermediates/javac/debug/compileDebugJavaWithJavac/classes:build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes:build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar"
+      type="MAIN"
+      applicationId="com.nortlinos.wearos"
+      generatedSourceFolders="build/generated/ksp/debug/java:build/generated/ksp/debug/kotlin:build/generated/ap_generated_sources/debug/out"
+      desugaredMethodsFiles="/home/solfen/.gradle/caches/9.8.0/transforms/e91db16a6dcd2f49fc91f84d16953788/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.nortlinos.wearos.app-mergeDebugResources-73:/values-sw210dp-v13/values-sw210dp-v13.xml",
+            "map": [
+                {
+                    "source": "/home/solfen/.gradle/caches/9.8.0/transforms/35f23d2de29f4defa9ae3ef3daa5c8d8/transformed/wear-1.3.0/res/values-sw210dp-v13/values-sw210dp-v13.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,126,198,265",
+                        "endColumns": "70,71,66,54",
+                        "endOffsets": "121,193,260,315"
+                    }
+                }
+            ]
+        }
+    ]
+}

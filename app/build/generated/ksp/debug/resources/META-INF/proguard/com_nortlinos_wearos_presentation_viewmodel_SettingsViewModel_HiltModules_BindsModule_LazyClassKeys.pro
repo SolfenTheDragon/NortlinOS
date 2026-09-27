@@ -1,0 +1,1 @@
+-keep,allowobfuscation,allowshrinking class com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.screen.RingGeometryTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.639Z" hostname="solfen-Latitude-5500" time="0.004">
+  <properties/>
+  <testcase name="bounds wrap chapter marks with the start and end of the book" classname="com.nortlinos.wearos.presentation.screen.RingGeometryTest" time="0.004"/>
+  <testcase name="gaps shrink for books with many chapters" classname="com.nortlinos.wearos.presentation.screen.RingGeometryTest" time="0.0"/>
+  <testcase name="a single segment is a closed ring" classname="com.nortlinos.wearos.presentation.screen.RingGeometryTest" time="0.0"/>
+  <testcase name="bounds ignore marks outside the book" classname="com.nortlinos.wearos.presentation.screen.RingGeometryTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

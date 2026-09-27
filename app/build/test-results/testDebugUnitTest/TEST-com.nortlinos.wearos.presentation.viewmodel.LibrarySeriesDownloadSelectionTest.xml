@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesDownloadSelectionTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.652Z" hostname="solfen-Latitude-5500" time="0.002">
+  <properties/>
+  <testcase name="doesNotQueueBooksAlreadyDownloadedOrActive" classname="com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesDownloadSelectionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

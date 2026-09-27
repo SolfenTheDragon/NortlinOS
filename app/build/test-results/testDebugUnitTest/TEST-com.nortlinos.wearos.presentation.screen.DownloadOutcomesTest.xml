@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.screen.DownloadOutcomesTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.633Z" hostname="solfen-Latitude-5500" time="0.002">
+  <properties/>
+  <testcase name="deleting a finished download is confirmed" classname="com.nortlinos.wearos.presentation.screen.DownloadOutcomesTest" time="0.0"/>
+  <testcase name="opening a page on a settled download shows nothing" classname="com.nortlinos.wearos.presentation.screen.DownloadOutcomesTest" time="0.0"/>
+  <testcase name="an active download finishing or failing is confirmed" classname="com.nortlinos.wearos.presentation.screen.DownloadOutcomesTest" time="0.0"/>
+  <testcase name="cancelling and pausing need no confirmation" classname="com.nortlinos.wearos.presentation.screen.DownloadOutcomesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

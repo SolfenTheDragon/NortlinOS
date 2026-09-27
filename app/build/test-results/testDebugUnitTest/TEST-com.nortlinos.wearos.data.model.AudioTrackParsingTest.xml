@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.data.model.AudioTrackParsingTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.566Z" hostname="solfen-Latitude-5500" time="0.026">
+  <properties/>
+  <testcase name="track byte size is read from server metadata" classname="com.nortlinos.wearos.data.model.AudioTrackParsingTest" time="0.026"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

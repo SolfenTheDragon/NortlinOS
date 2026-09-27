@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-09-27T06:29:24.647Z" hostname="solfen-Latitude-5500" time="0.004">
+  <properties/>
+  <testcase name="next chapter is unavailable in the final chapter" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.002"/>
+  <testcase name="previous chapter steps back when near the start of a chapter" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="ring marks are chapter starts as book fractions, first excluded" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="index reports the chapter containing the position" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="previous chapter is unavailable only at the very start of the book" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.001"/>
+  <testcase name="a position before the first chapter starts is handled" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="a book without chapters offers no navigation" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="previous chapter restarts the current one once past the threshold" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="next chapter jumps to the following start" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="ring marks drop out-of-range starts and unknown durations" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="gaps between chapters do not break navigation" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <testcase name="previous chapter from within the first chapter returns to zero" classname="com.nortlinos.wearos.presentation.viewmodel.ChapterNavigatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
