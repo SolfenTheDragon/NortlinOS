@@ -1,5 +1,9 @@
 # NortlinOS
 
+<p align="center">
+  <img src="resources/ListenOSIcon.png" alt="NortlinOS logo" width="128" />
+</p>
+
 **Your Audiobookshelf library, on your wrist.**
 
 NortlinOS is an audiobook player for Wear OS watches that connects to your own
