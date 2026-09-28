@@ -45,6 +45,23 @@ phone at home, and pick up exactly where you left off on any device.
 - **Keep listening after signing out.** *Listen offline* on the sign-in screen opens your
   downloads without an account.
 
+### Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="resources/Signed%20In%20Menu.png" alt="NortlinOS home menu" width="190" /><br />Home menu and connection status</td>
+    <td align="center"><img src="resources/Signed%20In%20Menu%20Continued.png" alt="NortlinOS home menu continued" width="190" /><br />More home menu options</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resources/ServerList.png" alt="Audiobookshelf library books" width="190" /><br />Search and browse a library</td>
+    <td align="center"><img src="resources/Book%20Menu.png" alt="Audiobook details and playback options" width="190" /><br />Book details and playback options</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resources/Book%20Menu%20Continued.png" alt="Audiobook download and description" width="190" /><br />Download and book description</td>
+    <td align="center"><img src="resources/Playback%20Menu.png" alt="NortlinOS audiobook player" width="190" /><br />Player controls and book progress</td>
+  </tr>
+</table>
+
 ## Requirements
 
 - A watch running **Wear OS 4 or newer** (for example Pixel Watch 2+, Galaxy Watch 6+).
@@ -72,6 +89,10 @@ To update, repeat step 3 with the new file. `-r` keeps your sign-in, downloads a
 ## Signing in
 
 **You must sign in seperately from the app on your phone, they do not share login information**
+
+<p align="center">
+  <img src="resources/Main%20Menu.png" alt="NortlinOS sign-in form" width="220" />
+</p>
 
 1. Open NortlinOS and enter your **server address**, e.g. `https://abs.example.com` or
    `192.168.1.20:13378`. If you leave out `https://`, NortlinOS tries a secure connection first.
@@ -101,6 +122,10 @@ continue in the background.
 
 Progress you make offline is saved on the watch and sent to your server the next time the watch
 is connected, either via Wifi or through your phones connection.
+
+<p align="center">
+  <img src="resources/Downloaded.png" alt="Downloaded audiobooks on the watch" width="220" />
+</p>
 
 ## Battery
 
