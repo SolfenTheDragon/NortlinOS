@@ -1,4 +1,4 @@
-<img src="resources/ListenOSIcon.png" alt="NortlinOS logo" width="48" align="left" />
+<img src="resources/NortlinOS.png" alt="NortlinOS logo" width="48" align="left" />
 
 # NortlinOS
 

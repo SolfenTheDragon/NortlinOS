@@ -12,6 +12,8 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import javax.inject.Inject
@@ -27,15 +29,23 @@ class NortlinOSApp : Application(), DefaultLifecycleObserver, ImageLoaderFactory
         super<Application>.onCreate()
         connectivityMonitor.start()
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+        applicationScope.launch {
+            connectivityMonitor.networkAvailable.collect { available ->
+                if (!available) return@collect
+                for (attempt in 0 until CONNECTION_RETRIES) {
+                    val result = sessionRepository.reconnectSavedSession()
+                    if (result != SessionRepository.ValidationResult.UNREACHABLE) break
+                    if (attempt < CONNECTION_RETRIES - 1) delay(CONNECTION_RETRY_DELAY_MS)
+                }
+            }
+        }
     }
 
     override fun onStart(owner: LifecycleOwner) {
         if (sessionRepository.session.value != null) {
             connectivityMonitor.enqueueImmediateSync()
-            applicationScope.launch {
-                sessionRepository.validateStoredSessionIfStale()
-            }
         }
+        applicationScope.launch { sessionRepository.reconnectSavedSession() }
     }
 
     /**
@@ -54,4 +64,9 @@ class NortlinOSApp : Application(), DefaultLifecycleObserver, ImageLoaderFactory
         .allowRgb565(true)
         .crossfade(false)
         .build()
+
+    private companion object {
+        const val CONNECTION_RETRIES = 3
+        const val CONNECTION_RETRY_DELAY_MS = 2_000L
+    }
 }

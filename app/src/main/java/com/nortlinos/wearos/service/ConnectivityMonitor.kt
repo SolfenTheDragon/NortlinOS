@@ -25,6 +25,8 @@ class ConnectivityMonitor @Inject constructor(
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
     private val _online = MutableStateFlow(isValidatedNetworkAvailable())
     val online = _online.asStateFlow()
+    private val _networkAvailable = MutableStateFlow(hasActiveNetwork())
+    val networkAvailable = _networkAvailable.asStateFlow()
     private val workManager = WorkManager.getInstance(context)
     private val constraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -42,16 +44,19 @@ class ConnectivityMonitor @Inject constructor(
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            _networkAvailable.value = true
             _online.value = isValidatedNetworkAvailable()
             enqueueImmediateSync()
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            _networkAvailable.value = hasActiveNetwork()
             _online.value =
                 networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
 
         override fun onLost(network: Network) {
+            _networkAvailable.value = hasActiveNetwork()
             _online.value = isValidatedNetworkAvailable()
         }
     }

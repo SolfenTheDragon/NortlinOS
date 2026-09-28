@@ -18,6 +18,12 @@ private val Context.settingsDataStore by preferencesDataStore("display_settings"
 
 enum class ProgressDisplayMode { CHAPTER, BOOK }
 
+data class SavedLogin(
+    val url: String,
+    val username: String,
+    val password: String
+)
+
 @Singleton
 class SessionStore @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = EncryptedSharedPreferences.create(
@@ -46,6 +52,29 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
             .apply()
     }
 
+    fun saveLogin(url: String, username: String, password: String) {
+        prefs.edit()
+            .putString(LOGIN_URL, url)
+            .putString(LOGIN_USERNAME, username)
+            .putString(LOGIN_PASSWORD, password)
+            .apply()
+    }
+
+    fun getLogin(): SavedLogin? {
+        val url = prefs.getString(LOGIN_URL, null) ?: return null
+        val username = prefs.getString(LOGIN_USERNAME, null) ?: return null
+        val password = prefs.getString(LOGIN_PASSWORD, null) ?: return null
+        return SavedLogin(url, username, password)
+    }
+
+    fun clearLogin() {
+        prefs.edit()
+            .remove(LOGIN_URL)
+            .remove(LOGIN_USERNAME)
+            .remove(LOGIN_PASSWORD)
+            .apply()
+    }
+
     fun clear() = prefs.edit().clear().apply()
 
     private companion object {
@@ -54,6 +83,9 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
         const val USER_ID = "user_id"
         const val USERNAME = "username"
         const val REFRESH_TOKEN = "refresh_token"
+        const val LOGIN_URL = "login_url"
+        const val LOGIN_USERNAME = "login_username"
+        const val LOGIN_PASSWORD = "login_password"
     }
 }
 

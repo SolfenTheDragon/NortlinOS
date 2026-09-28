@@ -71,6 +71,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
  */
 class NoNetworkException : IOException("No network connection")
 
+private class AuthenticationFailureException(code: Int) :
+    IOException("Login failed: HTTP $code")
+
 @Singleton
 class SessionRepository @Inject constructor(
     private val apiClient: ApiClient,
@@ -83,6 +86,7 @@ class SessionRepository @Inject constructor(
 
     /** Serializes token refreshes, which cannot safely overlap. */
     private val refreshLock = Mutex()
+    private val reconnectLock = Mutex()
 
     suspend fun login(serverUrl: String, username: String, password: String): Result<Server> =
         withContext(Dispatchers.IO) {
@@ -96,13 +100,20 @@ class SessionRepository @Inject constructor(
                         .login(LoginRequest(username.trim(), password))
                     val user = response.body()?.user
                     if (response.isSuccessful && user != null && user.bearerToken.isNotBlank()) {
+                        sessionStore.saveLogin(url, username.trim(), password)
                         return@withContext Result.success(
                             adopt(Server(url, user.bearerToken, user.id, user.username, user.refreshToken))
                         )
                     }
                     // The server answered, so the URL is right; trying the same host over
                     // cleartext would only downgrade the connection without changing the result.
-                    return@withContext Result.failure(IOException("Login failed: HTTP ${response.code()}"))
+                    return@withContext Result.failure(
+                        if (response.code() == 401 || response.code() == 403) {
+                            AuthenticationFailureException(response.code())
+                        } else {
+                            IOException("Login failed: HTTP ${response.code()}")
+                        }
+                    )
                 } catch (error: Exception) {
                     lastFailure = error
                     if (!isWorthRetryingOverCleartext(error)) break
@@ -213,6 +224,7 @@ class SessionRepository @Inject constructor(
             val response = api.openIdCallback(state, code, verifier)
             val user = response.body()?.user
             if (response.isSuccessful && user != null && user.bearerToken.isNotBlank()) {
+                sessionStore.clearLogin()
                 OpenIdAttempt.Succeeded(
                     adopt(Server(serverUrl, user.bearerToken, user.id, user.username, user.refreshToken))
                 )
@@ -227,6 +239,7 @@ class SessionRepository @Inject constructor(
     private fun adopt(server: Server): Server {
         sessionStore.save(server)
         _session.value = server
+        lastValidated = server.token to System.currentTimeMillis()
         return server
     }
 
@@ -247,8 +260,10 @@ class SessionRepository @Inject constructor(
                     it.code() == 401 || it.code() == 403 ->
                         if (recoverFromUnauthorized(server.url, server.token)) {
                             ValidationResult.VALID
-                        } else {
+                        } else if (_session.value == null) {
                             ValidationResult.INVALID
+                        } else {
+                            ValidationResult.UNREACHABLE
                         }
                     else -> ValidationResult.UNREACHABLE
                 }
@@ -268,6 +283,33 @@ class SessionRepository @Inject constructor(
         val lastAt = if (last?.first == token) last.second else null
         if (!SessionValidationThrottle.shouldValidate(System.currentTimeMillis(), lastAt)) return null
         return validateStoredSession()
+    }
+
+    /**
+     * Revalidates an existing session or signs back in with the encrypted saved login after a
+     * network returns. This lets sessions recover when their access token expired while offline.
+     */
+    suspend fun reconnectSavedSession(): ValidationResult = reconnectLock.withLock {
+        if (!connectivityMonitor.hasActiveNetwork()) return@withLock ValidationResult.UNREACHABLE
+
+        if (_session.value != null) {
+            val validation = validateStoredSessionIfStale()
+            if (_session.value != null) return@withLock validation ?: ValidationResult.VALID
+        }
+
+        val savedLogin = sessionStore.getLogin()
+            ?: return@withLock ValidationResult.INVALID
+        login(savedLogin.url, savedLogin.username, savedLogin.password).fold(
+            onSuccess = { ValidationResult.VALID },
+            onFailure = {
+                if (it is AuthenticationFailureException) {
+                    logout()
+                    ValidationResult.INVALID
+                } else {
+                    ValidationResult.UNREACHABLE
+                }
+            }
+        )
     }
 
     fun logout() {
@@ -303,8 +345,7 @@ class SessionRepository @Inject constructor(
             }
             val refreshToken = latest.refreshToken
             if (refreshToken.isNullOrBlank()) {
-                logout()
-                return@withLock false
+                return@withLock reauthenticate(latest)
             }
             val response = runCatching {
                 apiClient.newAuthSession(latest.url).refreshSession(refreshToken)
@@ -321,11 +362,31 @@ class SessionRepository @Inject constructor(
                 )
                 true
             } else {
-                // The server rejected the refresh token outright, so no retry can recover it.
-                if (response != null && response.code() in 400..499) logout()
-                false
+                if (response != null && response.code() in 400..499) {
+                    // A rejected refresh token may still be recoverable with the saved password.
+                    reauthenticate(latest)
+                } else {
+                    false
+                }
             }
         }
+    }
+
+    private suspend fun reauthenticate(server: Server): Boolean {
+        val savedLogin = sessionStore.getLogin()
+            ?.takeIf { ServerIdentity.matches(it.url, server.url) }
+        if (savedLogin == null) {
+            logout()
+            return false
+        }
+
+        return login(savedLogin.url, savedLogin.username, savedLogin.password).fold(
+            onSuccess = { true },
+            onFailure = {
+                if (it is AuthenticationFailureException) logout()
+                false
+            }
+        )
     }
 
     fun requireServer(): Server =
