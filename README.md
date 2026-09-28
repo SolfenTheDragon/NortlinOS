@@ -1,4 +1,4 @@
-<img src="resources/NortlinOS.png" alt="NortlinOS logo" width="48" align="left" />
+<img src="resources/NortlinOS.png" alt="NortlinOS logo" width="52" align="left" />
 
 # NortlinOS
 
@@ -32,9 +32,9 @@ phone at home, and pick up exactly where you left off on any device.
   **crown to change the volume**. On round watches a ring around the edge shows how far through
   the book you are, with a small gap between chapters.
 - **Swipe left on the player** for extra tools (the dots at the bottom show which page you're on):
-  - previous/next chapter, or **All chapters** to jump straight to any chapter;
-  - a sleep timer (15, 30, 45 or 60 minutes, or any length up to 12 hours);
-  - playback speed (1.0× to 1.5× in small steps, plus 2× and 3×).
+  - previous/next chapter, or All chapters to jump straight to any chapter;
+  - a sleep timer (any length up to 12 hours);
+  - playback speed;
 - **Keep your place everywhere.** Progress syncs with your server automatically, so the phone
   app, the web player and the watch agree. If the watch and another device both moved on
   while out of touch, NortlinOS asks which position to keep instead of guessing.
@@ -71,6 +71,8 @@ To update, repeat step 3 with the new file. `-r` keeps your sign-in, downloads a
 
 ## Signing in
 
+**You must sign in seperately from the app on your phone, they do not share login information**
+
 1. Open NortlinOS and enter your **server address**, e.g. `https://abs.example.com` or
    `192.168.1.20:13378`. If you leave out `https://`, NortlinOS tries a secure connection first.
 2. Enter your **username and password** and tap **Sign in**.
@@ -98,7 +100,7 @@ space downloads use and how much is free. Downloads use Wi-Fi or your phone's co
 continue in the background.
 
 Progress you make offline is saved on the watch and sent to your server the next time the watch
-is connected.
+is connected, either via Wifi or through your phones connection.
 
 ## Battery
 
@@ -111,7 +113,6 @@ NortlinOS is built to be light on battery during long listening sessions:
   almost entirely black.
 - Covers are downloaded once at watch size and then reused.
 - The tile only updates when you play or pause; it never wakes the watch on a schedule.
-- The app is precompiled when installed, so it starts quickly without extra work on the watch.
 
 For the longest battery life, download books ahead of time instead of streaming.
 
@@ -133,8 +134,9 @@ For the longest battery life, download books ahead of time instead of streaming.
 
 Improvements being worked on:
 
-- Power efficiency
+- Power efficiency improvements
 - UI smoothness updates
+- Updates to the harness to help handle future Audiobookshelf API updates gracefully
 
 ## Privacy
 
