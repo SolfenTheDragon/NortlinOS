@@ -31,6 +31,7 @@ private object Routes {
     const val LOGIN = "login"
     const val HOME = "home"
     const val LIBRARIES = "libraries"
+    const val PODCAST_LIBRARIES = "podcasts"
     const val ITEMS = "items/{origin}/{libraryId}"
     const val DETAIL = "detail/{origin}/{itemId}"
     const val DOWNLOADED = "downloaded"
@@ -90,12 +91,19 @@ fun AppNavHost(
                 playerViewModel = playerViewModel,
                 settingsViewModel = settingsViewModel,
                 onLibraries = {
-                    val libraries = libraryViewModel.libraries.value
+                    val libraries = libraryViewModel.libraries.value.filter { it.mediaType != "podcast" }
                     if (libraries.size == 1) {
                         val library = libraries.single()
                         nav.navigate(Routes.items(library.id, library.originServerUrl))
                     }
                     else nav.navigate(Routes.LIBRARIES)
+                },
+                onPodcasts = {
+                    val libraries = libraryViewModel.libraries.value.filter { it.mediaType == "podcast" }
+                    if (libraries.size == 1) {
+                        val library = libraries.single()
+                        nav.navigate(Routes.items(library.id, library.originServerUrl))
+                    } else nav.navigate(Routes.PODCAST_LIBRARIES)
                 },
                 onDownloaded = { nav.navigate(Routes.DOWNLOADED) },
                 onSearch = { nav.navigate(Routes.SEARCH) },
@@ -105,7 +113,12 @@ fun AppNavHost(
             )
         }
         composable(Routes.LIBRARIES) {
-            LibraryScreen(libraryViewModel) { id, origin ->
+            LibraryScreen(libraryViewModel, podcastsOnly = false) { id, origin ->
+                nav.navigate(Routes.items(id, origin))
+            }
+        }
+        composable(Routes.PODCAST_LIBRARIES) {
+            LibraryScreen(libraryViewModel, podcastsOnly = true) { id, origin ->
                 nav.navigate(Routes.items(id, origin))
             }
         }

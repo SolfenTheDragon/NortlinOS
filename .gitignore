@@ -9,6 +9,10 @@ gradle-app.setting
 # Local configuration (contains machine-specific SDK path)
 local.properties
 
+# LLM wiki / generated documentation
+/docs/
+/AGENTS.md
+
 # Android Studio / IntelliJ
 .idea/
 *.iml

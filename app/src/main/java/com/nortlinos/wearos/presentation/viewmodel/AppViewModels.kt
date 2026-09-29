@@ -11,6 +11,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.nortlinos.wearos.data.api.ApiClient
 import com.nortlinos.wearos.data.local.ChapterEntity
+import com.nortlinos.wearos.data.local.DownloadStatus
+import com.nortlinos.wearos.data.local.DownloadedItemEntity
 import com.nortlinos.wearos.data.local.DownloadedBookData
 import com.nortlinos.wearos.data.local.LibraryEntity
 import com.nortlinos.wearos.data.local.LibraryItemEntity
@@ -98,6 +100,62 @@ data class SeriesDownloadUiState(
     val inProgress: Boolean = false,
     val error: String? = null
 )
+
+data class PodcastSeriesDownloadUiState(
+    val podcastId: String? = null,
+    val originServerUrl: String? = null,
+    val seriesName: String? = null,
+    val total: Int = 0,
+    val queued: Int = 0,
+    val deleted: Int = 0,
+    val skipped: Int = 0,
+    val failed: Int = 0,
+    val requiredBytes: Long = 0,
+    val availableBytes: Long = 0,
+    val unknownSizeCount: Int = 0,
+    val inProgress: Boolean = false,
+    val deleting: Boolean = false,
+    val requiresSpaceConfirmation: Boolean = false,
+    val pendingItemIds: List<String> = emptyList(),
+    val error: String? = null
+)
+
+internal data class PodcastSeriesDownloadPlan(
+    val itemIdsToQueue: List<String>,
+    val skippedCount: Int,
+    val requiredBytes: Long,
+    val unknownSizeCount: Int
+)
+
+internal object PodcastSeriesDownloadPlanner {
+    fun create(
+        itemIds: List<String>,
+        sizes: Map<String, Long>,
+        downloads: Map<String, DownloadedItemEntity>
+    ): PodcastSeriesDownloadPlan {
+        val selection = LibrarySeriesDownloadSelection.create(
+            itemIds,
+            downloads.mapValues { it.value.status }
+        )
+        var required = 0L
+        var unknownCount = 0
+        selection.itemIdsToQueue.forEach { id ->
+            val size = sizes[id]?.takeIf { it > 0 }
+            if (size == null) {
+                unknownCount++
+            } else {
+                val alreadyDownloaded = downloads[id]?.downloadedBytes?.coerceAtLeast(0) ?: 0
+                required += (size - alreadyDownloaded).coerceAtLeast(0)
+            }
+        }
+        return PodcastSeriesDownloadPlan(
+            itemIdsToQueue = selection.itemIdsToQueue,
+            skippedCount = selection.skippedCount,
+            requiredBytes = required,
+            unknownSizeCount = unknownCount
+        )
+    }
+}
 
 data class RecentPlaybackUiState(
     val books: List<com.nortlinos.wearos.data.local.RecentPlaybackItem> = emptyList(),
@@ -236,10 +294,14 @@ class LibraryViewModel @Inject constructor(
     val librarySeries: StateFlow<LibrarySeriesState> = _librarySeries.asStateFlow()
     private val _seriesDownload = MutableStateFlow(SeriesDownloadUiState())
     val seriesDownload: StateFlow<SeriesDownloadUiState> = _seriesDownload.asStateFlow()
+    private val _podcastSeriesDownload = MutableStateFlow(PodcastSeriesDownloadUiState())
+    val podcastSeriesDownload: StateFlow<PodcastSeriesDownloadUiState> =
+        _podcastSeriesDownload.asStateFlow()
     private var browseJob: Job? = null
     private var searchJob: Job? = null
     private var seriesJob: Job? = null
     private var seriesDownloadJob: Job? = null
+    private var podcastSeriesDownloadJob: Job? = null
 
     init {
         if (sessionRepository.session.value != null) refreshLibraries()
@@ -271,6 +333,8 @@ class LibraryViewModel @Inject constructor(
         libraryRepository.items(libraryId, originServerUrl)
     fun item(itemId: String, originServerUrl: String): Flow<LibraryItemEntity?> =
         libraryRepository.item(itemId, originServerUrl)
+    fun podcastEpisodes(podcastId: String, originServerUrl: String): Flow<List<LibraryItemEntity>> =
+        libraryRepository.podcastEpisodes(podcastId, originServerUrl)
     fun download(itemId: String, originServerUrl: String) =
         downloadRepository.download(itemId, originServerUrl)
 
@@ -411,6 +475,164 @@ class LibraryViewModel @Inject constructor(
             )
         }
     }
+
+    fun downloadPodcastSeries(
+        podcastId: String,
+        seriesName: String,
+        episodes: List<LibraryItemEntity>,
+        originServerUrl: String
+    ) {
+        if (podcastSeriesDownloadJob?.isActive == true ||
+            _podcastSeriesDownload.value.requiresSpaceConfirmation
+        ) return
+        val origin = ServerIdentity.normalize(originServerUrl)
+        val activeOrigin = sessionRepository.session.value?.url?.let(ServerIdentity::normalize)
+        if (activeOrigin != origin) {
+            _podcastSeriesDownload.value = PodcastSeriesDownloadUiState(
+                podcastId = podcastId,
+                originServerUrl = origin,
+                seriesName = seriesName,
+                error = "Sign in to the server this podcast belongs to."
+            )
+            return
+        }
+        val downloads = downloadStatuses.value
+            .filter { ServerIdentity.matches(it.originServerUrl, origin) }
+            .associateBy { it.itemId }
+        val plan = PodcastSeriesDownloadPlanner.create(
+            itemIds = episodes.map { it.id },
+            sizes = episodes.associate { it.id to it.remoteSizeBytes },
+            downloads = downloads
+        )
+        val initial = PodcastSeriesDownloadUiState(
+            podcastId = podcastId,
+            originServerUrl = origin,
+            seriesName = seriesName,
+            total = episodes.size,
+            skipped = plan.skippedCount,
+            requiredBytes = plan.requiredBytes,
+            unknownSizeCount = plan.unknownSizeCount,
+            inProgress = plan.itemIdsToQueue.isNotEmpty(),
+            pendingItemIds = plan.itemIdsToQueue
+        )
+        if (plan.itemIdsToQueue.isEmpty()) {
+            _podcastSeriesDownload.value = initial
+            return
+        }
+        podcastSeriesDownloadJob = viewModelScope.launch {
+            try {
+                val available = downloadRepository.availableBytes()
+                val needsWarning = plan.requiredBytes > available || plan.unknownSizeCount > 0
+                _podcastSeriesDownload.value = initial.copy(
+                    availableBytes = available,
+                    inProgress = false,
+                    requiresSpaceConfirmation = needsWarning
+                )
+                if (!needsWarning) queuePodcastEpisodes(initial)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _podcastSeriesDownload.value = initial.copy(
+                    inProgress = false,
+                    error = error.message ?: "Unable to check available storage"
+                )
+            }
+        }
+    }
+
+    fun confirmPodcastSeriesDownload() {
+        val current = _podcastSeriesDownload.value
+        if (!current.requiresSpaceConfirmation || podcastSeriesDownloadJob?.isActive == true) return
+        podcastSeriesDownloadJob = viewModelScope.launch { queuePodcastEpisodes(current) }
+    }
+
+    fun dismissPodcastSeriesSpaceWarning() {
+        _podcastSeriesDownload.value = _podcastSeriesDownload.value.copy(
+            requiresSpaceConfirmation = false,
+            pendingItemIds = emptyList()
+        )
+    }
+
+    private suspend fun queuePodcastEpisodes(state: PodcastSeriesDownloadUiState) {
+        _podcastSeriesDownload.value = state.copy(
+            requiresSpaceConfirmation = false,
+            inProgress = true,
+            queued = 0,
+            failed = 0,
+            error = null
+        )
+        var queued = 0
+        var failed = 0
+        val errors = mutableListOf<String>()
+        state.pendingItemIds.forEach { itemId ->
+            try {
+                downloadRepository.start(itemId, state.originServerUrl)
+                queued++
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                failed++
+                errors += error.message ?: "Episode download could not be queued"
+            }
+            _podcastSeriesDownload.value = _podcastSeriesDownload.value.copy(
+                queued = queued,
+                failed = failed,
+                error = errors.firstOrNull()
+            )
+        }
+        _podcastSeriesDownload.value = _podcastSeriesDownload.value.copy(
+            inProgress = false,
+            error = errors.distinct().joinToString("; ").ifBlank { null }
+        )
+    }
+
+    fun deletePodcastSeriesDownloads(
+        podcastId: String,
+        seriesName: String,
+        episodeIds: List<String>,
+        originServerUrl: String
+    ) {
+        if (podcastSeriesDownloadJob?.isActive == true) return
+        val origin = ServerIdentity.normalize(originServerUrl)
+        val downloads = downloadStatuses.value
+            .filter {
+                it.itemId in episodeIds && ServerIdentity.matches(it.originServerUrl, origin)
+            }
+        _podcastSeriesDownload.value = PodcastSeriesDownloadUiState(
+            podcastId = podcastId,
+            originServerUrl = origin,
+            seriesName = seriesName,
+            total = downloads.size,
+            inProgress = downloads.isNotEmpty(),
+            deleting = true
+        )
+        podcastSeriesDownloadJob = viewModelScope.launch {
+            var deleted = 0
+            var failed = 0
+            val errors = mutableListOf<String>()
+            downloads.forEach { download ->
+                try {
+                    downloadRepository.cancel(download.itemId, origin)
+                    deleted++
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    failed++
+                    errors += error.message ?: "Episode download could not be deleted"
+                }
+                _podcastSeriesDownload.value = _podcastSeriesDownload.value.copy(
+                    deleted = deleted,
+                    failed = failed,
+                    error = errors.firstOrNull()
+                )
+            }
+            _podcastSeriesDownload.value = _podcastSeriesDownload.value.copy(
+                inProgress = false,
+                error = errors.distinct().joinToString("; ").ifBlank { null }
+            )
+        }
+    }
+
     fun search(query: String): Flow<List<LibraryItemEntity>> =
         sessionRepository.session.value?.url?.let { origin ->
             if (query.isBlank()) flowOf(emptyList())
@@ -905,9 +1127,11 @@ class PlayerViewModel @Inject constructor(
                             fail("This book is not downloaded and the watch is offline")
                             return@playbackLoad
                         }
+                        val api = apiClient.scopedApi(server.url, server.token)
                         val response = runCatching {
-                            apiClient.scopedApi(server.url, server.token)
-                                .startPlaybackSession(itemId)
+                            cached.parentItemId?.let { podcastId ->
+                                api.startPodcastPlaybackSession(podcastId, itemId)
+                            } ?: api.startPlaybackSession(itemId)
                         }.getOrNull()
                         val playback = response?.takeIf { it.isSuccessful }?.body()
                         if (playback == null) {

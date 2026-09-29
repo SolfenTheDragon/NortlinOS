@@ -112,9 +112,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         setForeground(notification(notificationId, itemId, 0))
         val item = dependencies.libraryRepository().getItem(itemId, originServerUrl)
             ?: throw IOException("Book metadata was not cached")
-        val session = dependencies.apiClient()
-            .scopedApi(server.url, server.token)
-            .startPlaybackSession(itemId)
+        val api = dependencies.apiClient().scopedApi(server.url, server.token)
+        val session = item.parentItemId?.let { podcastId ->
+            api.startPodcastPlaybackSession(podcastId, itemId)
+        } ?: api.startPlaybackSession(itemId)
         if (!session.isSuccessful) throw IOException("Playback session: HTTP ${session.code()}")
         val tracks = session.body()?.audioTracks.orEmpty().sortedBy { it.index }
         if (tracks.isEmpty()) throw IOException("No audio tracks are available")
@@ -135,7 +136,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             runCatching {
                 downloadTrack(
                     ApiClient.sizedCoverUrl(
-                        ApiClient.resolveUrl(server.url, ApiClient.coverEndpoint(itemId)),
+                        ApiClient.resolveUrl(
+                            server.url,
+                            ApiClient.coverEndpoint(item.parentItemId ?: itemId)
+                        ),
                         OFFLINE_COVER_WIDTH_PX
                     ),
                     server.token,
