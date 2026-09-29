@@ -15,13 +15,13 @@ phone at home, and pick up exactly where you left off on any device.
   narrator, open a series, and queue all its books
   for download at once. Books already downloaded or downloading are left alone.
 - **Podcasts have their own section** on the home screen, separate from your book library. Browse
-  podcast libraries and shows, then play an episode or download it for offline listening. Show and
-  episode details are read from the on-watch library cache first and refreshed from your server
-  when connected. Podcast episodes have their own download and listening progress, and use the
-  same player controls as books: skip, chapter navigation when available, playback speed, volume,
-  and a sleep timer. Download or delete all episodes in a show together; NortlinOS checks the
-  watch's free space against Audiobookshelf's episode-size estimates and warns before queueing if
-  the show may not fit or some sizes are unknown.
+  podcast libraries and shows, then open an episode to play it or download it for offline
+  listening. Show and episode details are read from the on-watch library cache first and refreshed
+  from your server when connected. Podcast episodes have their own download and listening
+  progress, and use the same player controls as books: skip, chapter navigation when available,
+  playback speed, volume, and a sleep timer. Download or delete all episodes in a show together;
+  NortlinOS checks the watch's free space against Audiobookshelf's episode-size estimates and
+  warns before queueing if the show may not fit or some sizes are unknown.
 - **Download books to the watch** and listen with no phone or internet connection. Downloads can
   be paused, resumed, cancelled, or deleted, and an interrupted download continues where it stopped.
 - **Stream** books you haven't downloaded when the watch is online.
@@ -57,10 +57,23 @@ phone at home, and pick up exactly where you left off on any device.
 ## Podcasts
 
 Tap **Podcasts** on the home screen to browse podcast libraries and shows separately from your
-books. Open a show to browse its episodes, then play an episode or download it for offline
-listening. Playback uses the same player controls as books, including skip controls, playback
-speed, volume, and the sleep timer. Episode listening progress syncs independently with
-Audiobookshelf.
+books. Open a show to browse its episodes.
+
+On a show's episode list, each episode is a single tile:
+
+- **Tap an episode** to open its episode page: description, **Play or resume**, and full download
+  controls (download, pause, resume, cancel, or delete).
+- **Press and hold an episode** to start downloading it right from the list, without leaving the
+  list — no need to open the episode first. Holding again while it's downloading pauses it. Holding
+  an episode that's already downloaded does nothing there; manage or delete it from the episode
+  page instead.
+- **The tile's color shows its download state at a glance:** dark gray with white text and an
+  orange download icon means the episode isn't downloaded yet (or is queued, downloading, paused,
+  or failed); orange with black text and a green check means it's downloaded and ready to play
+  offline.
+
+Playback uses the same player controls as books, including skip controls, playback speed, volume,
+and the sleep timer. Episode listening progress syncs independently with Audiobookshelf.
 
 Show details and episode lists are cached on the watch and can be browsed offline after they have
 been loaded once while connected. To listen offline, download each episode first; streaming an
