@@ -359,7 +359,12 @@ fun RecentPlaybackScreen(
                     ),
                     authToken = matchingServer?.token,
                     status = if (book.downloaded) DownloadStatus.DOWNLOADED else null,
-                    onClick = { onItem(book.itemId, book.originServerUrl) }
+                    onClick = { onItem(book.itemId, book.originServerUrl) },
+                    onLongClick = downloadLongPressAction(
+                        status = if (book.downloaded) DownloadStatus.DOWNLOADED else null,
+                        onStart = { libraryViewModel.startDownload(book.itemId) },
+                        onPause = {}
+                    )
                 )
             }
         }
@@ -551,7 +556,14 @@ fun LibraryItemsScreen(
                     coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                     authToken = server?.token,
                     status = statuses[book.id to book.originServerUrl],
-                    onClick = { onItem(book.id) }
+                    onClick = { onItem(book.id) },
+                    // Podcast libraries list shows here, not individually downloadable items;
+                    // only offer long-press download for actual books.
+                    onLongClick = if (isPodcastLibrary) null else downloadLongPressAction(
+                        status = statuses[book.id to book.originServerUrl],
+                        onStart = { viewModel.startDownload(book.id) },
+                        onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
+                    )
                 )
             }
             if (activeBrowse.loading) {
@@ -749,7 +761,12 @@ fun LibraryItemsScreen(
                     coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                     authToken = server?.token,
                     status = statuses[book.id to book.originServerUrl],
-                    onClick = { onItem(book.id) }
+                    onClick = { onItem(book.id) },
+                    onLongClick = downloadLongPressAction(
+                        status = statuses[book.id to book.originServerUrl],
+                        onStart = { viewModel.startDownload(book.id) },
+                        onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
+                    )
                 )
             }
         }
@@ -1057,18 +1074,11 @@ fun BookDetailScreen(
                 DownloadOutcomeConfirmation(status?.status)
                 WearChip(
                     onClick = { onEpisode(episode.id) },
-                    onLongClick = {
-                        // Long press downloads (or pauses an in-flight download); a downloaded
-                        // episode has nothing left to do here, manage/delete it from the episode
-                        // detail page instead.
-                        when (status?.status) {
-                            null, DownloadStatus.PAUSED, DownloadStatus.FAILED ->
-                                viewModel.startDownload(episode.id)
-                            DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED ->
-                                viewModel.pauseDownload(episode.id, originServerUrl)
-                            DownloadStatus.DOWNLOADED -> {}
-                        }
-                    },
+                    onLongClick = downloadLongPressAction(
+                        status = status?.status,
+                        onStart = { viewModel.startDownload(episode.id) },
+                        onPause = { viewModel.pauseDownload(episode.id, originServerUrl) }
+                    ),
                     onLongClickLabel = "Download episode",
                     label = { Text(episode.title, maxLines = 2) },
                     secondaryLabel = {
@@ -1375,7 +1385,12 @@ fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) 
                 coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                 authToken = server?.token,
                 status = statuses[book.id to book.originServerUrl],
-                onClick = { onItem(book.id, book.originServerUrl) }
+                onClick = { onItem(book.id, book.originServerUrl) },
+                onLongClick = downloadLongPressAction(
+                    status = statuses[book.id to book.originServerUrl],
+                    onStart = { viewModel.startDownload(book.id) },
+                    onPause = { viewModel.pauseDownload(book.id, book.originServerUrl) }
+                )
             )
         }
         if (query.value.isNotBlank() && results.isEmpty()) {
@@ -2493,7 +2508,8 @@ private fun BookChip(
     coverPath: String?,
     authToken: String?,
     status: DownloadStatus?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val transform = LocalListItemTransform.current
     val context = LocalContext.current
@@ -2516,6 +2532,8 @@ private fun BookChip(
     if (request == null) {
         TitleCard(
             onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClick?.let { "Download" },
             title = cardTitle,
             subtitle = cardSubtitle,
             transformation = transform?.surface,
@@ -2532,6 +2550,8 @@ private fun BookChip(
     )
     TitleCard(
         onClick = onClick,
+        onLongClick = onLongClick,
+        onLongClickLabel = onLongClick?.let { "Download" },
         containerPainter = CardDefaults.containerPainter(image = cropped),
         title = cardTitle,
         subtitle = cardSubtitle,
@@ -2579,6 +2599,23 @@ private fun DownloadStatusIcon(status: DownloadStatus?) {
         null -> Triple(Icons.Default.CloudDownload, "Not downloaded", MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
     }
     Icon(icon, description, tint = color, modifier = Modifier.size(16.dp))
+}
+
+/**
+ * Long-press-to-download action shared by book tiles (and episode tiles): starts the download if
+ * it isn't running, pauses it if it's in flight, and does nothing once it's already downloaded —
+ * that state is managed from the item's own detail page instead.
+ */
+private fun downloadLongPressAction(
+    status: DownloadStatus?,
+    onStart: () -> Unit,
+    onPause: () -> Unit
+): () -> Unit = {
+    when (status) {
+        null, DownloadStatus.PAUSED, DownloadStatus.FAILED -> onStart()
+        DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> onPause()
+        DownloadStatus.DOWNLOADED -> {}
+    }
 }
 
 private fun episodeStatusIcon(status: DownloadStatus?) = when (status) {

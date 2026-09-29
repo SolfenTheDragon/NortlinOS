@@ -22,8 +22,10 @@ phone at home, and pick up exactly where you left off on any device.
   playback speed, volume, and a sleep timer. Download or delete all episodes in a show together;
   NortlinOS checks the watch's free space against Audiobookshelf's episode-size estimates and
   warns before queueing if the show may not fit or some sizes are unknown.
-- **Download books to the watch** and listen with no phone or internet connection. Downloads can
-  be paused, resumed, cancelled, or deleted, and an interrupted download continues where it stopped.
+- **Download books to the watch** and listen with no phone or internet connection. Press and hold
+  a book's tile in a library, series, or search list to start (or pause) its download right there,
+  or open the book's page for full download controls. Downloads can be paused, resumed, cancelled,
+  or deleted, and an interrupted download continues where it stopped.
 - **Stream** books you haven't downloaded when the watch is online.
 - **Recent books.** The main menu lists your 10 most recently played unfinished books. Tap one to
   open its book page, where you can play it or download it first.
