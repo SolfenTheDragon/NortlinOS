@@ -114,6 +114,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumnState
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AlertDialog
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonColors
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledIconButton
@@ -760,7 +761,8 @@ fun BookDetailScreen(
     itemId: String,
     originServerUrl: String,
     viewModel: LibraryViewModel,
-    onPlay: (String) -> Unit
+    onPlay: (String) -> Unit,
+    onEpisode: (String) -> Unit = {}
 ) {
     val itemFlow = remember(itemId, originServerUrl) {
         viewModel.item(itemId, originServerUrl)
@@ -781,8 +783,6 @@ fun BookDetailScreen(
     val refreshingItemId by viewModel.refreshingItemId.collectAsState()
     val confirmDelete = remember { mutableStateOf(false) }
     val confirmCancel = remember { mutableStateOf(false) }
-    val confirmEpisodeDelete = remember { mutableStateOf<String?>(null) }
-    val confirmEpisodeCancel = remember { mutableStateOf<String?>(null) }
     val confirmPodcastSeriesDelete = remember { mutableStateOf(false) }
     LaunchedEffect(itemId, originServerUrl) {
         viewModel.refreshItem(itemId, originServerUrl)
@@ -1046,7 +1046,7 @@ fun BookDetailScreen(
                     }
                 }
             }
-            items(episodes, key = { it.id }) { episode ->
+            itemsIndexed(episodes, key = { _, it -> it.id }) { _, episode ->
                 val status = downloadStatuses.firstOrNull {
                     it.itemId == episode.id &&
                         com.nortlinos.wearos.data.repository.ServerIdentity.matches(
@@ -1056,62 +1056,36 @@ fun BookDetailScreen(
                 }
                 DownloadOutcomeConfirmation(status?.status)
                 WearChip(
-                    onClick = { onPlay(episode.id) },
+                    onClick = { onEpisode(episode.id) },
+                    onLongClick = {
+                        // Long press downloads (or pauses an in-flight download); a downloaded
+                        // episode has nothing left to do here, manage/delete it from the episode
+                        // detail page instead.
+                        when (status?.status) {
+                            null, DownloadStatus.PAUSED, DownloadStatus.FAILED ->
+                                viewModel.startDownload(episode.id)
+                            DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED ->
+                                viewModel.pauseDownload(episode.id, originServerUrl)
+                            DownloadStatus.DOWNLOADED -> {}
+                        }
+                    },
+                    onLongClickLabel = "Download episode",
                     label = { Text(episode.title, maxLines = 2) },
                     secondaryLabel = {
                         Text(
                             listOfNotNull(
                                 episode.author,
-                                episode.durationMs.takeIf { it > 0 }?.let(::time)
+                                episode.durationMs.takeIf { it > 0 }?.let(::time),
+                                episodeStatusLabel(status?.status, status?.downloadedBytes ?: 0, status?.fileSizeBytes ?: 0)
                             ).joinToString(" · ").ifBlank { "Podcast episode" },
                             maxLines = 1
                         )
                     },
-                    icon = { Icon(Icons.Default.PlayArrow, null) },
+                    icon = { Icon(episodeStatusIcon(status?.status), null) },
                     style = ChipStyle.PRIMARY,
+                    colors = episodeChipColors(status?.status),
                     modifier = Modifier.fillMaxWidth()
                 )
-                DownloadAction(
-                    status = status?.status,
-                    downloadedBytes = status?.downloadedBytes ?: 0,
-                    totalBytes = status?.fileSizeBytes ?: 0,
-                    error = status?.error,
-                    onStart = { viewModel.startDownload(episode.id) },
-                    onPause = { viewModel.pauseDownload(episode.id, originServerUrl) },
-                    onDelete = {
-                        if (confirmEpisodeDelete.value == episode.id) {
-                            viewModel.deleteDownload(episode.id, originServerUrl)
-                            confirmEpisodeDelete.value = null
-                        } else {
-                            confirmEpisodeDelete.value = episode.id
-                        }
-                    },
-                    deleteConfirmationPending = confirmEpisodeDelete.value == episode.id
-                )
-                if (status?.status != null && status.status != DownloadStatus.DOWNLOADED) {
-                    WearChip(
-                        onClick = {
-                            if (confirmEpisodeCancel.value == episode.id) {
-                                viewModel.cancelDownload(episode.id, originServerUrl)
-                                confirmEpisodeCancel.value = null
-                            } else {
-                                confirmEpisodeCancel.value = episode.id
-                            }
-                        },
-                        label = {
-                            Text(
-                                if (confirmEpisodeCancel.value == episode.id) {
-                                    "Tap again to cancel"
-                                } else {
-                                    "Cancel download"
-                                }
-                            )
-                        },
-                        icon = { Icon(Icons.Default.Delete, null) },
-                        style = ChipStyle.SECONDARY,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
             }
         } else {
             // Deliberately a list button rather than an EdgeButton: an EdgeButton stays collapsed
@@ -1174,6 +1148,111 @@ fun BookDetailScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * A single podcast episode: cover, title, podcast/duration, play, download, and description.
+ * Reached by a short press on an episode row in [BookDetailScreen]; a long press there instead
+ * starts (or pauses) the download directly without leaving the list.
+ */
+@Composable
+fun EpisodeDetailScreen(
+    episodeId: String,
+    originServerUrl: String,
+    viewModel: LibraryViewModel,
+    onPlay: (String) -> Unit
+) {
+    val itemFlow = remember(episodeId, originServerUrl) {
+        viewModel.item(episodeId, originServerUrl)
+    }
+    val downloadFlow = remember(episodeId, originServerUrl) {
+        viewModel.download(episodeId, originServerUrl)
+    }
+    val episode by itemFlow.collectAsState(initial = null)
+    val download by downloadFlow.collectAsState(initial = null)
+    val server by viewModel.sessionRepository.session.collectAsState()
+    val confirmDelete = remember { mutableStateOf(false) }
+    val confirmCancel = remember { mutableStateOf(false) }
+    DownloadOutcomeConfirmation(download?.status)
+
+    WearList {
+        item {
+            CoverImage(
+                baseUrl = server?.url,
+                coverPath = ApiClient.coverSource(
+                    episode?.localCoverPath,
+                    episode?.coverPath,
+                    episodeId
+                ),
+                authToken = server?.token,
+                modifier = Modifier.size(72.dp)
+            )
+        }
+        item { ScreenTitle(episode?.title ?: "Episode") }
+        item {
+            SupportingText(
+                listOfNotNull(
+                    // The podcast's title is stashed in `series` when episodes are cached.
+                    episode?.series,
+                    episode?.durationMs?.takeIf { it > 0 }?.let(::time)
+                ).joinToString(" · ").ifBlank { "Podcast episode" }
+            )
+        }
+        item {
+            WearChip(
+                onClick = { onPlay(episodeId) },
+                label = { Text("Play or resume") },
+                icon = { Icon(Icons.Default.PlayArrow, null) },
+                style = ChipStyle.PRIMARY,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            DownloadAction(
+                status = download?.status,
+                downloadedBytes = download?.downloadedBytes ?: 0,
+                totalBytes = download?.fileSizeBytes ?: 0,
+                error = download?.error,
+                onStart = { viewModel.startDownload(episodeId) },
+                onPause = { viewModel.pauseDownload(episodeId, originServerUrl) },
+                onDelete = {
+                    if (confirmDelete.value) {
+                        viewModel.deleteDownload(episodeId, originServerUrl)
+                        confirmDelete.value = false
+                    } else {
+                        confirmDelete.value = true
+                    }
+                },
+                deleteConfirmationPending = confirmDelete.value
+            )
+        }
+        if (download?.status != null && download?.status != DownloadStatus.DOWNLOADED) {
+            item {
+                WearChip(
+                    onClick = {
+                        if (confirmCancel.value) {
+                            viewModel.cancelDownload(episodeId, originServerUrl)
+                            confirmCancel.value = false
+                        } else {
+                            confirmCancel.value = true
+                        }
+                    },
+                    label = { Text(if (confirmCancel.value) "Tap again to cancel" else "Cancel download") },
+                    icon = { Icon(Icons.Default.Delete, null) },
+                    style = ChipStyle.SECONDARY,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+        item {
+            Text(
+                text = episode?.description ?: "No description cached.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -2299,7 +2378,10 @@ private fun WearChip(
     secondaryLabel: (@Composable RowScope.() -> Unit)? = null,
     icon: (@Composable BoxScope.() -> Unit)? = null,
     style: ChipStyle = ChipStyle.TONAL,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
+    colors: ButtonColors? = null
 ) {
     val transform = LocalListItemTransform.current
     val itemModifier = modifier
@@ -2309,6 +2391,9 @@ private fun WearChip(
         ChipStyle.PRIMARY -> Button(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.buttonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -2318,6 +2403,9 @@ private fun WearChip(
         ChipStyle.TONAL -> FilledTonalButton(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.filledTonalButtonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -2327,6 +2415,9 @@ private fun WearChip(
         ChipStyle.SECONDARY -> OutlinedButton(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.outlinedButtonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -2490,6 +2581,45 @@ private fun DownloadStatusIcon(status: DownloadStatus?) {
     Icon(icon, description, tint = color, modifier = Modifier.size(16.dp))
 }
 
+private fun episodeStatusIcon(status: DownloadStatus?) = when (status) {
+    DownloadStatus.DOWNLOADED -> Icons.Default.CheckCircle
+    DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> Icons.Default.CloudDownload
+    DownloadStatus.PAUSED -> Icons.Default.Pause
+    DownloadStatus.FAILED -> Icons.Default.Error
+    null -> Icons.Default.Download
+}
+
+private fun episodeStatusLabel(status: DownloadStatus?, downloadedBytes: Long, totalBytes: Long): String? =
+    when (status) {
+        DownloadStatus.DOWNLOADED -> "Downloaded"
+        DownloadStatus.DOWNLOADING -> downloadProgress(downloadedBytes, totalBytes)
+        DownloadStatus.QUEUED -> "Queued"
+        DownloadStatus.PAUSED -> "Paused"
+        DownloadStatus.FAILED -> "Download failed"
+        null -> null
+    }
+
+// Episode tile palette: a downloaded episode reads as "done" (orange fill, black text, green
+// check), everything still needing a download reads as "actionable" (dark fill, white text,
+// orange download icon) regardless of in-progress/paused/failed state.
+private val EpisodeNotDownloadedContainer = Color(0xFF2E2E2E)
+private val EpisodeNotDownloadedContent = Color.White
+private val EpisodeNotDownloadedIcon = Color(0xFFFF9800)
+private val EpisodeDownloadedContainer = Color(0xFFFF9800)
+private val EpisodeDownloadedContent = Color.Black
+private val EpisodeDownloadedIcon = Color(0xFF4CAF50)
+
+@Composable
+private fun episodeChipColors(status: DownloadStatus?): ButtonColors {
+    val downloaded = status == DownloadStatus.DOWNLOADED
+    return ButtonDefaults.buttonColors(
+        containerColor = if (downloaded) EpisodeDownloadedContainer else EpisodeNotDownloadedContainer,
+        contentColor = if (downloaded) EpisodeDownloadedContent else EpisodeNotDownloadedContent,
+        secondaryContentColor = if (downloaded) EpisodeDownloadedContent else EpisodeNotDownloadedContent,
+        iconColor = if (downloaded) EpisodeDownloadedIcon else EpisodeNotDownloadedIcon
+    )
+}
+
 @Composable
 private fun DownloadAction(
     status: DownloadStatus?,
@@ -2499,14 +2629,23 @@ private fun DownloadAction(
     onStart: () -> Unit,
     onPause: () -> Unit,
     onDelete: () -> Unit,
-    deleteConfirmationPending: Boolean
+    deleteConfirmationPending: Boolean,
+    // Podcast name and episode position, e.g. "My Show · Episode 3 of 12". Only supplied for
+    // per-episode download buttons, where every button in the list otherwise shares an identical
+    // label and would be indistinguishable when navigating by rotary bezel or TalkBack.
+    episodeContext: String? = null
 ) {
+    fun withContext(text: String) = listOfNotNull(episodeContext, text).joinToString(" · ")
     when (status) {
         DownloadStatus.DOWNLOADED -> WearChip(
             onClick = onDelete,
             label = { Text(if (deleteConfirmationPending) "Tap again to delete" else "Delete download") },
             secondaryLabel = {
-                Text(if (deleteConfirmationPending) "Audio files will be removed" else formatBytes(totalBytes))
+                Text(
+                    withContext(
+                        if (deleteConfirmationPending) "Audio files will be removed" else formatBytes(totalBytes)
+                    )
+                )
             },
             icon = { Icon(Icons.Default.Delete, null) },
             modifier = Modifier.fillMaxWidth()
@@ -2516,11 +2655,13 @@ private fun DownloadAction(
             label = { Text("Pause download") },
             secondaryLabel = {
                 Text(
-                    if (status == DownloadStatus.QUEUED) {
-                        "Queued behind other downloads"
-                    } else {
-                        downloadProgress(downloadedBytes, totalBytes)
-                    },
+                    withContext(
+                        if (status == DownloadStatus.QUEUED) {
+                            "Queued behind other downloads"
+                        } else {
+                            downloadProgress(downloadedBytes, totalBytes)
+                        }
+                    ),
                     maxLines = 1
                 )
             },
@@ -2530,13 +2671,16 @@ private fun DownloadAction(
         DownloadStatus.PAUSED, DownloadStatus.FAILED -> WearChip(
             onClick = onStart,
             label = { Text("Resume download") },
-            secondaryLabel = { Text(error ?: downloadProgress(downloadedBytes, totalBytes), maxLines = 1) },
+            secondaryLabel = {
+                Text(withContext(error ?: downloadProgress(downloadedBytes, totalBytes)), maxLines = 1)
+            },
             icon = { Icon(Icons.Default.Download, null) },
             modifier = Modifier.fillMaxWidth()
         )
         null -> WearChip(
             onClick = onStart,
             label = { Text("Download for offline") },
+            secondaryLabel = episodeContext?.let { context -> { Text(context, maxLines = 1) } },
             icon = { Icon(Icons.Default.Download, null) },
             modifier = Modifier.fillMaxWidth()
         )

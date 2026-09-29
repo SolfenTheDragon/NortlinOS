@@ -13,6 +13,7 @@ import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.nortlinos.wearos.presentation.screen.BookDetailScreen
 import com.nortlinos.wearos.presentation.screen.DownloadedScreen
+import com.nortlinos.wearos.presentation.screen.EpisodeDetailScreen
 import com.nortlinos.wearos.presentation.screen.HomeScreen
 import com.nortlinos.wearos.presentation.screen.LibraryItemsScreen
 import com.nortlinos.wearos.presentation.screen.LibraryScreen
@@ -34,6 +35,7 @@ private object Routes {
     const val PODCAST_LIBRARIES = "podcasts"
     const val ITEMS = "items/{origin}/{libraryId}"
     const val DETAIL = "detail/{origin}/{itemId}"
+    const val EPISODE = "episode/{origin}/{episodeId}"
     const val DOWNLOADED = "downloaded"
     const val SEARCH = "search"
     const val PLAYER = "player"
@@ -41,6 +43,7 @@ private object Routes {
     const val SETTINGS = "settings"
     fun items(id: String, origin: String) = "items/${Uri.encode(origin)}/$id"
     fun detail(id: String, origin: String) = "detail/${Uri.encode(origin)}/$id"
+    fun episode(id: String, origin: String) = "episode/${Uri.encode(origin)}/$id"
 }
 
 @Composable
@@ -150,6 +153,25 @@ fun AppNavHost(
             val origin = Uri.decode(it.arguments?.getString("origin").orEmpty())
             BookDetailScreen(
                 itemId = it.arguments?.getString("itemId").orEmpty(),
+                originServerUrl = origin,
+                viewModel = libraryViewModel,
+                onPlay = { id ->
+                    playerViewModel.play(id, origin)
+                    nav.navigate(Routes.PLAYER)
+                },
+                onEpisode = { id -> nav.navigate(Routes.episode(id, origin)) }
+            )
+        }
+        composable(
+            Routes.EPISODE,
+            arguments = listOf(
+                navArgument("origin") { type = NavType.StringType },
+                navArgument("episodeId") { type = NavType.StringType }
+            )
+        ) {
+            val origin = Uri.decode(it.arguments?.getString("origin").orEmpty())
+            EpisodeDetailScreen(
+                episodeId = it.arguments?.getString("episodeId").orEmpty(),
                 originServerUrl = origin,
                 viewModel = libraryViewModel,
                 onPlay = { id ->
