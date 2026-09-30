@@ -247,6 +247,7 @@ fun HomeScreen(
     val server by libraryViewModel.sessionRepository.session.collectAsState()
     val online by libraryViewModel.online.collectAsState()
     val searchVisible by settingsViewModel.homeSearchVisible.collectAsState()
+    val podcastsVisible by settingsViewModel.homePodcastsVisible.collectAsState()
     WearList {
         item { ScreenTitle(stringResource(R.string.app_name)) }
         player.itemId?.let {
@@ -291,13 +292,15 @@ fun HomeScreen(
                 onLibraries
             )
         }
-        item {
-            NavigationChip(
-                "Podcasts",
-                "Browse and listen to podcast episodes",
-                Icons.AutoMirrored.Filled.LibraryBooks,
-                onPodcasts
-            )
+        if (podcastsVisible) {
+            item {
+                NavigationChip(
+                    "Podcasts",
+                    "Browse and listen to podcast episodes",
+                    Icons.AutoMirrored.Filled.LibraryBooks,
+                    onPodcasts
+                )
+            }
         }
         if (searchVisible) {
             item { NavigationChip("Search", "Search the local cache", Icons.Default.Search, onSearch) }
@@ -2229,6 +2232,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val confirmLogout = remember { mutableStateOf(false) }
     val seriesView by viewModel.seriesView.collectAsState()
     val searchVisible by viewModel.homeSearchVisible.collectAsState()
+    val podcastsVisible by viewModel.homePodcastsVisible.collectAsState()
     WearList {
         item { ScreenTitle("Settings") }
         item { SupportingText("Downloads") }
@@ -2260,6 +2264,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 description = "Show the Search entry on the main menu.",
                 checked = searchVisible,
                 onCheckedChange = viewModel::setHomeSearchVisible
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Podcasts on main menu",
+                description = "Show the Podcasts entry on the main menu.",
+                checked = podcastsVisible,
+                onCheckedChange = viewModel::setHomePodcastsVisible
             )
         }
         item { SupportingText("Show playback progress as") }

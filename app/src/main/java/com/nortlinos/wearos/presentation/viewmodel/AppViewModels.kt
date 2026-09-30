@@ -1549,12 +1549,17 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val homeSearchVisible = settingsStore.homeSearchVisible
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val homePodcastsVisible = settingsStore.homePodcastsVisible
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     fun setSeriesView(enabled: Boolean) =
         viewModelScope.launch { settingsStore.setLibrarySeriesView(enabled) }
 
     fun setHomeSearchVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomeSearchVisible(visible) }
+
+    fun setHomePodcastsVisible(visible: Boolean) =
+        viewModelScope.launch { settingsStore.setHomePodcastsVisible(visible) }
 
     fun logout() = sessionRepository.logout()
 }
