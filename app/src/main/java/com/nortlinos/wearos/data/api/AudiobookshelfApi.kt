@@ -80,6 +80,13 @@ interface AudiobookshelfApi {
         @Body request: PlaybackRequest = PlaybackRequest()
     ): Response<PlaybackSession>
 
+    @POST("api/items/{id}/play/{episodeId}")
+    suspend fun startPodcastPlaybackSession(
+        @Path("id") itemId: String,
+        @Path("episodeId") episodeId: String,
+        @Body request: PlaybackRequest = PlaybackRequest()
+    ): Response<PlaybackSession>
+
     @POST("api/session/{id}/sync")
     suspend fun syncSession(
         @Path("id") sessionId: String,
@@ -89,9 +96,22 @@ interface AudiobookshelfApi {
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
+    @GET("api/me/progress/{id}/{episodeId}")
+    suspend fun getPodcastEpisodeProgress(
+        @Path("id") itemId: String,
+        @Path("episodeId") episodeId: String
+    ): Response<MediaProgressDto>
+
     @PATCH("api/me/progress/{id}")
     suspend fun updateProgress(
         @Path("id") itemId: String,
+        @Body body: ProgressUpdateRequest
+    ): Response<Unit>
+
+    @PATCH("api/me/progress/{id}/{episodeId}")
+    suspend fun updatePodcastEpisodeProgress(
+        @Path("id") itemId: String,
+        @Path("episodeId") episodeId: String,
         @Body body: ProgressUpdateRequest
     ): Response<Unit>
 }
@@ -144,6 +164,7 @@ data class ProgressUpdateRequest(
 )
 data class MediaProgressDto(
     val libraryItemId: String? = null,
+    val episodeId: String? = null,
     val currentTime: Double = 0.0,
     val duration: Double = 0.0,
     val lastUpdate: Long = 0L,

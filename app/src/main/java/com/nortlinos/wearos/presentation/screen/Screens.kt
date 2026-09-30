@@ -114,6 +114,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumnState
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AlertDialog
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonColors
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledIconButton
@@ -235,6 +236,7 @@ fun HomeScreen(
     playerViewModel: PlayerViewModel,
     settingsViewModel: SettingsViewModel,
     onLibraries: () -> Unit,
+    onPodcasts: () -> Unit,
     onDownloaded: () -> Unit,
     onSearch: () -> Unit,
     onRecent: () -> Unit,
@@ -245,6 +247,7 @@ fun HomeScreen(
     val server by libraryViewModel.sessionRepository.session.collectAsState()
     val online by libraryViewModel.online.collectAsState()
     val searchVisible by settingsViewModel.homeSearchVisible.collectAsState()
+    val podcastsVisible by settingsViewModel.homePodcastsVisible.collectAsState()
     WearList {
         item { ScreenTitle(stringResource(R.string.app_name)) }
         player.itemId?.let {
@@ -273,7 +276,14 @@ fun HomeScreen(
             )
         }
         // Downloads come first: they play offline and cost far less battery than streaming.
-        item { NavigationChip("Downloaded", "Books stored on this watch", Icons.Default.Download, onDownloaded) }
+        item {
+            NavigationChip(
+                "Downloaded",
+                "Books and podcast episodes stored on this watch",
+                Icons.Default.Download,
+                onDownloaded
+            )
+        }
         item {
             NavigationChip(
                 "Server library",
@@ -281,6 +291,16 @@ fun HomeScreen(
                 Icons.AutoMirrored.Filled.LibraryBooks,
                 onLibraries
             )
+        }
+        if (podcastsVisible) {
+            item {
+                NavigationChip(
+                    "Podcasts",
+                    "Browse and listen to podcast episodes",
+                    Icons.AutoMirrored.Filled.LibraryBooks,
+                    onPodcasts
+                )
+            }
         }
         if (searchVisible) {
             item { NavigationChip("Search", "Search the local cache", Icons.Default.Search, onSearch) }
@@ -342,7 +362,12 @@ fun RecentPlaybackScreen(
                     ),
                     authToken = matchingServer?.token,
                     status = if (book.downloaded) DownloadStatus.DOWNLOADED else null,
-                    onClick = { onItem(book.itemId, book.originServerUrl) }
+                    onClick = { onItem(book.itemId, book.originServerUrl) },
+                    onLongClick = downloadLongPressAction(
+                        status = if (book.downloaded) DownloadStatus.DOWNLOADED else null,
+                        onStart = { libraryViewModel.startDownload(book.itemId) },
+                        onPause = {}
+                    )
                 )
             }
         }
@@ -350,13 +375,18 @@ fun RecentPlaybackScreen(
 }
 
 @Composable
-fun LibraryScreen(viewModel: LibraryViewModel, onLibrary: (String, String) -> Unit) {
+fun LibraryScreen(
+    viewModel: LibraryViewModel,
+    podcastsOnly: Boolean,
+    onLibrary: (String, String) -> Unit
+) {
     val libraries by viewModel.libraries.collectAsState()
+    val visibleLibraries = libraries.filter { (it.mediaType == "podcast") == podcastsOnly }
     val error by viewModel.error.collectAsState()
     val refreshing by viewModel.refreshingLibraries.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshLibraries() }
     WearList {
-        item { ScreenTitle("Server libraries") }
+        item { ScreenTitle(if (podcastsOnly) "Podcast libraries" else "Book libraries") }
         error?.let { message ->
             item { StatusText(message, MaterialTheme.colorScheme.error) }
             item {
@@ -368,7 +398,7 @@ fun LibraryScreen(viewModel: LibraryViewModel, onLibrary: (String, String) -> Un
                 )
             }
         }
-        items(libraries, key = { it.id }) { library ->
+        items(visibleLibraries, key = { "${it.originServerUrl}:${it.id}" }) { library ->
             NavigationChip(
                 label = library.name,
                 secondary = library.mediaType.replaceFirstChar { it.uppercase() },
@@ -376,10 +406,15 @@ fun LibraryScreen(viewModel: LibraryViewModel, onLibrary: (String, String) -> Un
                 onClick = { onLibrary(library.id, library.originServerUrl) }
             )
         }
-        if (libraries.isEmpty() && refreshing) {
+        if (visibleLibraries.isEmpty() && refreshing) {
             item { CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp)) }
-        } else if (libraries.isEmpty()) {
-            item { EmptyState("No server libraries", "Retry while connected to load your catalog.") }
+        } else if (visibleLibraries.isEmpty()) {
+            item {
+                EmptyState(
+                    if (podcastsOnly) "No podcast libraries" else "No book libraries",
+                    "Retry while connected to load your catalog."
+                )
+            }
         }
     }
 }
@@ -395,11 +430,21 @@ fun LibraryItemsScreen(
     settingsViewModel: SettingsViewModel
 ) {
     val seriesViewDefault by settingsViewModel.seriesView.collectAsState()
-    val showSeries = remember(libraryId, originServerUrl) { mutableStateOf(seriesViewDefault) }
+    val libraries by viewModel.libraries.collectAsState()
+    val isPodcastLibrary = libraries.firstOrNull {
+        it.id == libraryId &&
+            com.nortlinos.wearos.data.repository.ServerIdentity.matches(
+                it.originServerUrl,
+                originServerUrl
+            )
+    }?.mediaType == "podcast"
+    val showSeries = remember(libraryId, originServerUrl) {
+        mutableStateOf(seriesViewDefault && !isPodcastLibrary)
+    }
     // Picking up a later settings change keeps the preference authoritative without overriding a
     // manual toggle made while this screen is open.
-    LaunchedEffect(libraryId, originServerUrl, seriesViewDefault) {
-        showSeries.value = seriesViewDefault
+    LaunchedEffect(libraryId, originServerUrl, seriesViewDefault, isPodcastLibrary) {
+        showSeries.value = seriesViewDefault && !isPodcastLibrary
     }
     val selectedSeriesName = remember(libraryId, originServerUrl) { mutableStateOf<String?>(null) }
     val browse by viewModel.libraryBrowse.collectAsState()
@@ -427,8 +472,8 @@ fun LibraryItemsScreen(
     LaunchedEffect(libraryId, originServerUrl) {
         viewModel.openLibrary(libraryId, originServerUrl)
     }
-    LaunchedEffect(libraryId, originServerUrl, showSeries.value) {
-        if (showSeries.value) viewModel.loadSeries(libraryId, originServerUrl)
+    LaunchedEffect(libraryId, originServerUrl, showSeries.value, isPodcastLibrary) {
+        if (showSeries.value && !isPodcastLibrary) viewModel.loadSeries(libraryId, originServerUrl)
     }
     DisposableEffect(libraryId, originServerUrl, viewModel) {
         onDispose { viewModel.cancelSeriesLoad(libraryId, originServerUrl) }
@@ -445,7 +490,7 @@ fun LibraryItemsScreen(
     }
 
     WearList(listState = listState) {
-        item {
+        if (!isPodcastLibrary) item {
             WearChip(
                 onClick = {
                     val nextShowSeries = !showSeries.value
@@ -468,11 +513,18 @@ fun LibraryItemsScreen(
             )
         }
         if (!showSeries.value) {
-            item { ScreenTitle("Server books") }
+            item { ScreenTitle(if (isPodcastLibrary) "Podcasts" else "Server books") }
             item {
                 WearChip(
                     onClick = searchInput,
-                    label = { Text(activeBrowse.query.ifBlank { "Search this library" }, maxLines = 1) },
+                    label = {
+                        Text(
+                            activeBrowse.query.ifBlank {
+                                if (isPodcastLibrary) "Search podcasts" else "Search this library"
+                            },
+                            maxLines = 1
+                        )
+                    },
                     secondaryLabel = { Text("Title, author, series, narrator") },
                     icon = { Icon(Icons.Default.Search, null) },
                     modifier = Modifier.fillMaxWidth()
@@ -501,12 +553,20 @@ fun LibraryItemsScreen(
                 }
                 BookChip(
                     title = book.title,
-                    secondary = book.author ?: book.series ?: "Unknown author",
+                    secondary = book.author ?: book.series
+                        ?: if (isPodcastLibrary) "Podcast" else "Unknown author",
                     baseUrl = server?.url,
                     coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                     authToken = server?.token,
                     status = statuses[book.id to book.originServerUrl],
-                    onClick = { onItem(book.id) }
+                    onClick = { onItem(book.id) },
+                    // Podcast libraries list shows here, not individually downloadable items;
+                    // only offer long-press download for actual books.
+                    onLongClick = if (isPodcastLibrary) null else downloadLongPressAction(
+                        status = statuses[book.id to book.originServerUrl],
+                        onStart = { viewModel.startDownload(book.id) },
+                        onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
+                    )
                 )
             }
             if (activeBrowse.loading) {
@@ -704,7 +764,12 @@ fun LibraryItemsScreen(
                     coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                     authToken = server?.token,
                     status = statuses[book.id to book.originServerUrl],
-                    onClick = { onItem(book.id) }
+                    onClick = { onItem(book.id) },
+                    onLongClick = downloadLongPressAction(
+                        status = statuses[book.id to book.originServerUrl],
+                        onStart = { viewModel.startDownload(book.id) },
+                        onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
+                    )
                 )
             }
         }
@@ -716,7 +781,8 @@ fun BookDetailScreen(
     itemId: String,
     originServerUrl: String,
     viewModel: LibraryViewModel,
-    onPlay: (String) -> Unit
+    onPlay: (String) -> Unit,
+    onEpisode: (String) -> Unit = {}
 ) {
     val itemFlow = remember(itemId, originServerUrl) {
         viewModel.item(itemId, originServerUrl)
@@ -724,16 +790,147 @@ fun BookDetailScreen(
     val downloadFlow = remember(itemId, originServerUrl) {
         viewModel.download(itemId, originServerUrl)
     }
+    val episodeFlow = remember(itemId, originServerUrl) {
+        viewModel.podcastEpisodes(itemId, originServerUrl)
+    }
     val item by itemFlow.collectAsState(initial = null)
     val download by downloadFlow.collectAsState(initial = null)
+    val episodes by episodeFlow.collectAsState(initial = emptyList())
+    val downloadStatuses by viewModel.downloadStatuses.collectAsState()
+    val podcastSeriesDownload by viewModel.podcastSeriesDownload.collectAsState()
+    val online by viewModel.online.collectAsState()
     val server by viewModel.sessionRepository.session.collectAsState()
     val refreshingItemId by viewModel.refreshingItemId.collectAsState()
     val confirmDelete = remember { mutableStateOf(false) }
     val confirmCancel = remember { mutableStateOf(false) }
+    val confirmPodcastSeriesDelete = remember { mutableStateOf(false) }
     LaunchedEffect(itemId, originServerUrl) {
         viewModel.refreshItem(itemId, originServerUrl)
     }
-    DownloadOutcomeConfirmation(download?.status)
+    val isPodcast = item?.mediaType == "podcast"
+    if (!isPodcast) DownloadOutcomeConfirmation(download?.status)
+    val podcastSeriesOperation = podcastSeriesDownload.takeIf {
+        it.podcastId == itemId &&
+            com.nortlinos.wearos.data.repository.ServerIdentity.matches(
+                it.originServerUrl.orEmpty(),
+                originServerUrl
+            )
+    }
+    val podcastEpisodeDownloads = downloadStatuses.filter { status ->
+        episodes.any { it.id == status.itemId } &&
+            com.nortlinos.wearos.data.repository.ServerIdentity.matches(
+                status.originServerUrl,
+                originServerUrl
+            )
+    }
+    val downloadedEpisodeCount = podcastEpisodeDownloads.count {
+        it.status == DownloadStatus.DOWNLOADED
+    }
+    val allEpisodesScheduled = episodes.isNotEmpty() &&
+        podcastEpisodeDownloads.count {
+            it.status in setOf(
+                DownloadStatus.QUEUED,
+                DownloadStatus.DOWNLOADING,
+                DownloadStatus.DOWNLOADED
+            )
+        } == episodes.size
+    val hasEpisodeDownloads = podcastEpisodeDownloads.isNotEmpty()
+
+    AlertDialog(
+        visible = isPodcast && podcastSeriesOperation?.requiresSpaceConfirmation == true,
+        onDismissRequest = viewModel::dismissPodcastSeriesSpaceWarning,
+        icon = { Icon(Icons.Default.CloudDownload, null) },
+        title = {
+            Text(
+                when {
+                    podcastSeriesOperation != null &&
+                        podcastSeriesOperation.requiredBytes > podcastSeriesOperation.availableBytes ->
+                        "Not enough space"
+                    podcastSeriesOperation != null && podcastSeriesOperation.unknownSizeCount > 0 ->
+                        "Episode sizes unknown"
+                    else -> "Check available space"
+                },
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            val operation = podcastSeriesOperation
+            val storageWarning = if (
+                operation != null && operation.requiredBytes > operation.availableBytes
+            ) {
+                "About ${formatBytes(operation.requiredBytes)} is needed, but only " +
+                    "${formatBytes(operation.availableBytes)} is free."
+            } else {
+                "Known-size episodes need about ${formatBytes(operation?.requiredBytes ?: 0)}; " +
+                    "the watch reports ${formatBytes(operation?.availableBytes ?: 0)} free."
+            }
+            val unknownWarning = operation?.unknownSizeCount
+                ?.takeIf { it > 0 }
+                ?.let { " The size of $it episode${if (it == 1) " is" else "s are"} unknown." }
+                .orEmpty()
+            Text(
+                "$storageWarning$unknownWarning You can continue, but some downloads may fail.",
+                textAlign = TextAlign.Center
+            )
+        }
+    ) {
+        item {
+            WearChip(
+                onClick = viewModel::confirmPodcastSeriesDownload,
+                label = { Text("Download anyway") },
+                icon = { Icon(Icons.Default.Download, null) },
+                style = ChipStyle.PRIMARY,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            WearChip(
+                onClick = viewModel::dismissPodcastSeriesSpaceWarning,
+                label = { Text("Cancel") },
+                style = ChipStyle.SECONDARY,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+
+    AlertDialog(
+        visible = isPodcast && confirmPodcastSeriesDelete.value,
+        onDismissRequest = { confirmPodcastSeriesDelete.value = false },
+        icon = { Icon(Icons.Default.Delete, null) },
+        title = { Text("Delete all episodes?", textAlign = TextAlign.Center) },
+        text = {
+            Text(
+                "This removes all episode downloads for this podcast from the watch.",
+                textAlign = TextAlign.Center
+            )
+        }
+    ) {
+        item {
+            WearChip(
+                onClick = {
+                    viewModel.deletePodcastSeriesDownloads(
+                        podcastId = itemId,
+                        seriesName = item?.title ?: "Podcast",
+                        episodeIds = episodes.map { it.id },
+                        originServerUrl = originServerUrl
+                    )
+                    confirmPodcastSeriesDelete.value = false
+                },
+                label = { Text("Delete all downloads") },
+                icon = { Icon(Icons.Default.Delete, null) },
+                style = ChipStyle.PRIMARY,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            WearChip(
+                onClick = { confirmPodcastSeriesDelete.value = false },
+                label = { Text("Keep downloads") },
+                style = ChipStyle.SECONDARY,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 
     WearList {
         item {
@@ -748,13 +945,277 @@ fun BookDetailScreen(
                 modifier = Modifier.size(72.dp)
             )
         }
-        item { ScreenTitle(item?.title ?: "Book") }
+        item {
+            ScreenTitle(
+                item?.title ?: if (isPodcast) "Podcast" else "Book"
+            )
+        }
         item { SupportingText(item?.author ?: "Unknown author") }
-        // Deliberately a list button rather than an EdgeButton: an EdgeButton stays collapsed
-        // until the end of the list, which puts Play below a multi-paragraph description.
+        if (isPodcast) {
+            item {
+                Text(
+                    text = item?.description ?: "No description cached.",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+                )
+            }
+            item { ScreenTitle("Episodes") }
+            item {
+                WearChip(
+                    onClick = {
+                        viewModel.downloadPodcastSeries(
+                            podcastId = itemId,
+                            seriesName = item?.title ?: "Podcast",
+                            episodes = episodes,
+                            originServerUrl = originServerUrl
+                        )
+                    },
+                    label = {
+                        Text(
+                            if (podcastSeriesOperation?.inProgress == true &&
+                                !podcastSeriesOperation.deleting
+                            ) {
+                                "Queueing episodes…"
+                            } else if (episodes.isNotEmpty() &&
+                                downloadedEpisodeCount == episodes.size
+                            ) {
+                                "All episodes downloaded"
+                            } else if (allEpisodesScheduled) {
+                                "All episodes queued"
+                            } else {
+                                "Download all episodes"
+                            }
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            when {
+                                podcastSeriesOperation?.inProgress == true &&
+                                    !podcastSeriesOperation.deleting ->
+                                    "${podcastSeriesOperation.queued + podcastSeriesOperation.failed} of " +
+                                        "${podcastSeriesOperation.total} queued"
+                                podcastSeriesOperation?.error != null ->
+                                    podcastSeriesOperation.error
+                                else -> "$downloadedEpisodeCount of ${episodes.size} downloaded"
+                            },
+                            maxLines = 1
+                        )
+                    },
+                    icon = { Icon(Icons.Default.Download, null) },
+                    style = ChipStyle.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = episodes.isNotEmpty() &&
+                        podcastSeriesOperation?.inProgress != true &&
+                        !allEpisodesScheduled
+                )
+            }
+            if (hasEpisodeDownloads) {
+                item {
+                    WearChip(
+                        onClick = { confirmPodcastSeriesDelete.value = true },
+                        label = {
+                            Text(
+                                if (podcastSeriesOperation?.inProgress == true &&
+                                    podcastSeriesOperation.deleting
+                                ) {
+                                    "Deleting episodes…"
+                                } else {
+                                    "Delete all episode downloads"
+                                }
+                            )
+                        },
+                        secondaryLabel = {
+                            Text(
+                                if (podcastSeriesOperation?.inProgress == true &&
+                                    podcastSeriesOperation.deleting
+                                ) {
+                                    "${podcastSeriesOperation.deleted + podcastSeriesOperation.failed} of " +
+                                        "${podcastSeriesOperation.total} removed"
+                                } else {
+                                    "$downloadedEpisodeCount downloaded"
+                                },
+                                maxLines = 1
+                            )
+                        },
+                        icon = { Icon(Icons.Default.Delete, null) },
+                        style = ChipStyle.SECONDARY,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = podcastSeriesOperation?.inProgress != true
+                    )
+                }
+            }
+            podcastSeriesOperation?.error?.let { message ->
+                item { StatusText(message, MaterialTheme.colorScheme.error) }
+            }
+            if (episodes.isEmpty()) {
+                item {
+                    when {
+                        refreshingItemId == itemId ->
+                            CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp))
+                        item?.mediaType == "podcast" ->
+                            EmptyState(
+                                if (online) "No episodes found" else "Episodes not cached",
+                                if (online) {
+                                    "This podcast has no episodes available."
+                                } else {
+                                    "Connect to load this show's episodes for offline browsing."
+                                }
+                            )
+                        else -> EmptyState("Loading podcast", "Episode details will appear when available.")
+                    }
+                }
+            }
+            itemsIndexed(episodes, key = { _, it -> it.id }) { _, episode ->
+                val status = downloadStatuses.firstOrNull {
+                    it.itemId == episode.id &&
+                        com.nortlinos.wearos.data.repository.ServerIdentity.matches(
+                            it.originServerUrl,
+                            originServerUrl
+                        )
+                }
+                DownloadOutcomeConfirmation(status?.status)
+                WearChip(
+                    onClick = { onEpisode(episode.id) },
+                    onLongClick = downloadLongPressAction(
+                        status = status?.status,
+                        onStart = { viewModel.startDownload(episode.id) },
+                        onPause = { viewModel.pauseDownload(episode.id, originServerUrl) }
+                    ),
+                    onLongClickLabel = "Download episode",
+                    label = { Text(episode.title, maxLines = 2) },
+                    secondaryLabel = {
+                        Text(
+                            listOfNotNull(
+                                episode.author,
+                                episode.durationMs.takeIf { it > 0 }?.let(::time),
+                                episodeStatusLabel(status?.status, status?.downloadedBytes ?: 0, status?.fileSizeBytes ?: 0)
+                            ).joinToString(" · ").ifBlank { "Podcast episode" },
+                            maxLines = 1
+                        )
+                    },
+                    icon = { Icon(episodeStatusIcon(status?.status), null) },
+                    style = ChipStyle.PRIMARY,
+                    colors = episodeChipColors(status?.status),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        } else {
+            // Deliberately a list button rather than an EdgeButton: an EdgeButton stays collapsed
+            // until the end of the list, which puts Play below a multi-paragraph description.
+            item {
+                WearChip(
+                    onClick = { onPlay(itemId) },
+                    label = { Text("Play or resume") },
+                    icon = { Icon(Icons.Default.PlayArrow, null) },
+                    style = ChipStyle.PRIMARY,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                DownloadAction(
+                    status = download?.status,
+                    downloadedBytes = download?.downloadedBytes ?: 0,
+                    totalBytes = download?.fileSizeBytes ?: 0,
+                    error = download?.error,
+                    onStart = { viewModel.startDownload(itemId) },
+                    onPause = { viewModel.pauseDownload(itemId, originServerUrl) },
+                    onDelete = {
+                        if (confirmDelete.value) {
+                            viewModel.deleteDownload(itemId, originServerUrl)
+                            confirmDelete.value = false
+                        } else {
+                            confirmDelete.value = true
+                        }
+                    },
+                    deleteConfirmationPending = confirmDelete.value
+                )
+            }
+            if (download?.status != null && download?.status != DownloadStatus.DOWNLOADED) {
+                item {
+                    WearChip(
+                        onClick = {
+                            if (confirmCancel.value) {
+                                viewModel.cancelDownload(itemId, originServerUrl)
+                                confirmCancel.value = false
+                            } else {
+                                confirmCancel.value = true
+                            }
+                        },
+                        label = { Text(if (confirmCancel.value) "Tap again to cancel" else "Cancel download") },
+                        icon = { Icon(Icons.Default.Delete, null) },
+                        style = ChipStyle.SECONDARY,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            item {
+                when {
+                    item == null && refreshingItemId == itemId ->
+                        CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp))
+                    else -> Text(
+                        text = item?.description ?: "No description cached.",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A single podcast episode: cover, title, podcast/duration, play, download, and description.
+ * Reached by a short press on an episode row in [BookDetailScreen]; a long press there instead
+ * starts (or pauses) the download directly without leaving the list.
+ */
+@Composable
+fun EpisodeDetailScreen(
+    episodeId: String,
+    originServerUrl: String,
+    viewModel: LibraryViewModel,
+    onPlay: (String) -> Unit
+) {
+    val itemFlow = remember(episodeId, originServerUrl) {
+        viewModel.item(episodeId, originServerUrl)
+    }
+    val downloadFlow = remember(episodeId, originServerUrl) {
+        viewModel.download(episodeId, originServerUrl)
+    }
+    val episode by itemFlow.collectAsState(initial = null)
+    val download by downloadFlow.collectAsState(initial = null)
+    val server by viewModel.sessionRepository.session.collectAsState()
+    val confirmDelete = remember { mutableStateOf(false) }
+    val confirmCancel = remember { mutableStateOf(false) }
+    DownloadOutcomeConfirmation(download?.status)
+
+    WearList {
+        item {
+            CoverImage(
+                baseUrl = server?.url,
+                coverPath = ApiClient.coverSource(
+                    episode?.localCoverPath,
+                    episode?.coverPath,
+                    episodeId
+                ),
+                authToken = server?.token,
+                modifier = Modifier.size(72.dp)
+            )
+        }
+        item { ScreenTitle(episode?.title ?: "Episode") }
+        item {
+            SupportingText(
+                listOfNotNull(
+                    // The podcast's title is stashed in `series` when episodes are cached.
+                    episode?.series,
+                    episode?.durationMs?.takeIf { it > 0 }?.let(::time)
+                ).joinToString(" · ").ifBlank { "Podcast episode" }
+            )
+        }
         item {
             WearChip(
-                onClick = { onPlay(itemId) },
+                onClick = { onPlay(episodeId) },
                 label = { Text("Play or resume") },
                 icon = { Icon(Icons.Default.PlayArrow, null) },
                 style = ChipStyle.PRIMARY,
@@ -767,11 +1228,11 @@ fun BookDetailScreen(
                 downloadedBytes = download?.downloadedBytes ?: 0,
                 totalBytes = download?.fileSizeBytes ?: 0,
                 error = download?.error,
-                onStart = { viewModel.startDownload(itemId) },
-                onPause = { viewModel.pauseDownload(itemId, originServerUrl) },
+                onStart = { viewModel.startDownload(episodeId) },
+                onPause = { viewModel.pauseDownload(episodeId, originServerUrl) },
                 onDelete = {
                     if (confirmDelete.value) {
-                        viewModel.deleteDownload(itemId, originServerUrl)
+                        viewModel.deleteDownload(episodeId, originServerUrl)
                         confirmDelete.value = false
                     } else {
                         confirmDelete.value = true
@@ -785,7 +1246,7 @@ fun BookDetailScreen(
                 WearChip(
                     onClick = {
                         if (confirmCancel.value) {
-                            viewModel.cancelDownload(itemId, originServerUrl)
+                            viewModel.cancelDownload(episodeId, originServerUrl)
                             confirmCancel.value = false
                         } else {
                             confirmCancel.value = true
@@ -799,16 +1260,12 @@ fun BookDetailScreen(
             }
         }
         item {
-            when {
-                item == null && refreshingItemId == itemId ->
-                    CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp))
-                else -> Text(
-                    text = item?.description ?: "No description cached.",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-                )
-            }
+            Text(
+                text = episode?.description ?: "No description cached.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -931,7 +1388,12 @@ fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) 
                 coverPath = ApiClient.coverSource(book.localCoverPath, book.coverPath, book.id),
                 authToken = server?.token,
                 status = statuses[book.id to book.originServerUrl],
-                onClick = { onItem(book.id, book.originServerUrl) }
+                onClick = { onItem(book.id, book.originServerUrl) },
+                onLongClick = downloadLongPressAction(
+                    status = statuses[book.id to book.originServerUrl],
+                    onStart = { viewModel.startDownload(book.id) },
+                    onPause = { viewModel.pauseDownload(book.id, book.originServerUrl) }
+                )
             )
         }
         if (query.value.isNotBlank() && results.isEmpty()) {
@@ -1770,6 +2232,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val confirmLogout = remember { mutableStateOf(false) }
     val seriesView by viewModel.seriesView.collectAsState()
     val searchVisible by viewModel.homeSearchVisible.collectAsState()
+    val podcastsVisible by viewModel.homePodcastsVisible.collectAsState()
     WearList {
         item { ScreenTitle("Settings") }
         item { SupportingText("Downloads") }
@@ -1801,6 +2264,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 description = "Show the Search entry on the main menu.",
                 checked = searchVisible,
                 onCheckedChange = viewModel::setHomeSearchVisible
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Podcasts on main menu",
+                description = "Show the Podcasts entry on the main menu.",
+                checked = podcastsVisible,
+                onCheckedChange = viewModel::setHomePodcastsVisible
             )
         }
         item { SupportingText("Show playback progress as") }
@@ -1934,7 +2405,10 @@ private fun WearChip(
     secondaryLabel: (@Composable RowScope.() -> Unit)? = null,
     icon: (@Composable BoxScope.() -> Unit)? = null,
     style: ChipStyle = ChipStyle.TONAL,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
+    colors: ButtonColors? = null
 ) {
     val transform = LocalListItemTransform.current
     val itemModifier = modifier
@@ -1944,6 +2418,9 @@ private fun WearChip(
         ChipStyle.PRIMARY -> Button(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.buttonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -1953,6 +2430,9 @@ private fun WearChip(
         ChipStyle.TONAL -> FilledTonalButton(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.filledTonalButtonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -1962,6 +2442,9 @@ private fun WearChip(
         ChipStyle.SECONDARY -> OutlinedButton(
             onClick = onClick,
             modifier = itemModifier,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel,
+            colors = colors ?: ButtonDefaults.outlinedButtonColors(),
             secondaryLabel = secondaryLabel,
             icon = icon,
             enabled = enabled,
@@ -2037,7 +2520,8 @@ private fun BookChip(
     coverPath: String?,
     authToken: String?,
     status: DownloadStatus?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val transform = LocalListItemTransform.current
     val context = LocalContext.current
@@ -2060,6 +2544,8 @@ private fun BookChip(
     if (request == null) {
         TitleCard(
             onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClick?.let { "Download" },
             title = cardTitle,
             subtitle = cardSubtitle,
             transformation = transform?.surface,
@@ -2076,6 +2562,8 @@ private fun BookChip(
     )
     TitleCard(
         onClick = onClick,
+        onLongClick = onLongClick,
+        onLongClickLabel = onLongClick?.let { "Download" },
         containerPainter = CardDefaults.containerPainter(image = cropped),
         title = cardTitle,
         subtitle = cardSubtitle,
@@ -2125,6 +2613,62 @@ private fun DownloadStatusIcon(status: DownloadStatus?) {
     Icon(icon, description, tint = color, modifier = Modifier.size(16.dp))
 }
 
+/**
+ * Long-press-to-download action shared by book tiles (and episode tiles): starts the download if
+ * it isn't running, pauses it if it's in flight, and does nothing once it's already downloaded —
+ * that state is managed from the item's own detail page instead.
+ */
+private fun downloadLongPressAction(
+    status: DownloadStatus?,
+    onStart: () -> Unit,
+    onPause: () -> Unit
+): () -> Unit = {
+    when (status) {
+        null, DownloadStatus.PAUSED, DownloadStatus.FAILED -> onStart()
+        DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> onPause()
+        DownloadStatus.DOWNLOADED -> {}
+    }
+}
+
+private fun episodeStatusIcon(status: DownloadStatus?) = when (status) {
+    DownloadStatus.DOWNLOADED -> Icons.Default.CheckCircle
+    DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> Icons.Default.CloudDownload
+    DownloadStatus.PAUSED -> Icons.Default.Pause
+    DownloadStatus.FAILED -> Icons.Default.Error
+    null -> Icons.Default.Download
+}
+
+private fun episodeStatusLabel(status: DownloadStatus?, downloadedBytes: Long, totalBytes: Long): String? =
+    when (status) {
+        DownloadStatus.DOWNLOADED -> "Downloaded"
+        DownloadStatus.DOWNLOADING -> downloadProgress(downloadedBytes, totalBytes)
+        DownloadStatus.QUEUED -> "Queued"
+        DownloadStatus.PAUSED -> "Paused"
+        DownloadStatus.FAILED -> "Download failed"
+        null -> null
+    }
+
+// Episode tile palette: a downloaded episode reads as "done" (orange fill, black text, green
+// check), everything still needing a download reads as "actionable" (dark fill, white text,
+// orange download icon) regardless of in-progress/paused/failed state.
+private val EpisodeNotDownloadedContainer = Color(0xFF2E2E2E)
+private val EpisodeNotDownloadedContent = Color.White
+private val EpisodeNotDownloadedIcon = Color(0xFFFF9800)
+private val EpisodeDownloadedContainer = Color(0xFFFF9800)
+private val EpisodeDownloadedContent = Color.Black
+private val EpisodeDownloadedIcon = Color(0xFF4CAF50)
+
+@Composable
+private fun episodeChipColors(status: DownloadStatus?): ButtonColors {
+    val downloaded = status == DownloadStatus.DOWNLOADED
+    return ButtonDefaults.buttonColors(
+        containerColor = if (downloaded) EpisodeDownloadedContainer else EpisodeNotDownloadedContainer,
+        contentColor = if (downloaded) EpisodeDownloadedContent else EpisodeNotDownloadedContent,
+        secondaryContentColor = if (downloaded) EpisodeDownloadedContent else EpisodeNotDownloadedContent,
+        iconColor = if (downloaded) EpisodeDownloadedIcon else EpisodeNotDownloadedIcon
+    )
+}
+
 @Composable
 private fun DownloadAction(
     status: DownloadStatus?,
@@ -2134,14 +2678,23 @@ private fun DownloadAction(
     onStart: () -> Unit,
     onPause: () -> Unit,
     onDelete: () -> Unit,
-    deleteConfirmationPending: Boolean
+    deleteConfirmationPending: Boolean,
+    // Podcast name and episode position, e.g. "My Show · Episode 3 of 12". Only supplied for
+    // per-episode download buttons, where every button in the list otherwise shares an identical
+    // label and would be indistinguishable when navigating by rotary bezel or TalkBack.
+    episodeContext: String? = null
 ) {
+    fun withContext(text: String) = listOfNotNull(episodeContext, text).joinToString(" · ")
     when (status) {
         DownloadStatus.DOWNLOADED -> WearChip(
             onClick = onDelete,
             label = { Text(if (deleteConfirmationPending) "Tap again to delete" else "Delete download") },
             secondaryLabel = {
-                Text(if (deleteConfirmationPending) "Audio files will be removed" else formatBytes(totalBytes))
+                Text(
+                    withContext(
+                        if (deleteConfirmationPending) "Audio files will be removed" else formatBytes(totalBytes)
+                    )
+                )
             },
             icon = { Icon(Icons.Default.Delete, null) },
             modifier = Modifier.fillMaxWidth()
@@ -2151,11 +2704,13 @@ private fun DownloadAction(
             label = { Text("Pause download") },
             secondaryLabel = {
                 Text(
-                    if (status == DownloadStatus.QUEUED) {
-                        "Queued behind other downloads"
-                    } else {
-                        downloadProgress(downloadedBytes, totalBytes)
-                    },
+                    withContext(
+                        if (status == DownloadStatus.QUEUED) {
+                            "Queued behind other downloads"
+                        } else {
+                            downloadProgress(downloadedBytes, totalBytes)
+                        }
+                    ),
                     maxLines = 1
                 )
             },
@@ -2165,13 +2720,16 @@ private fun DownloadAction(
         DownloadStatus.PAUSED, DownloadStatus.FAILED -> WearChip(
             onClick = onStart,
             label = { Text("Resume download") },
-            secondaryLabel = { Text(error ?: downloadProgress(downloadedBytes, totalBytes), maxLines = 1) },
+            secondaryLabel = {
+                Text(withContext(error ?: downloadProgress(downloadedBytes, totalBytes)), maxLines = 1)
+            },
             icon = { Icon(Icons.Default.Download, null) },
             modifier = Modifier.fillMaxWidth()
         )
         null -> WearChip(
             onClick = onStart,
             label = { Text("Download for offline") },
+            secondaryLabel = episodeContext?.let { context -> { Text(context, maxLines = 1) } },
             icon = { Icon(Icons.Default.Download, null) },
             modifier = Modifier.fillMaxWidth()
         )

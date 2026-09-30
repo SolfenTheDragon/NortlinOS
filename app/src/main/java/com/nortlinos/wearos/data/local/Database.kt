@@ -28,7 +28,14 @@ data class LibraryEntity(
 @Entity(
     tableName = "library_items",
     primaryKeys = ["id", "originServerUrl"],
-    indices = [Index(value = ["libraryId", "originServerUrl"]), Index("title"), Index("author"), Index("series"), Index("narrator")]
+    indices = [
+        Index(value = ["libraryId", "originServerUrl"]),
+        Index(value = ["parentItemId", "originServerUrl"]),
+        Index("title"),
+        Index("author"),
+        Index("series"),
+        Index("narrator")
+    ]
 )
 data class LibraryItemEntity(
     val id: String,
@@ -43,7 +50,9 @@ data class LibraryItemEntity(
     val coverPath: String?,
     val localCoverPath: String?,
     val durationMs: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val parentItemId: String? = null,
+    val remoteSizeBytes: Long = 0
 )
 
 @Entity(
@@ -150,15 +159,15 @@ interface LibraryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLibraries(libraries: List<LibraryEntity>)
 
-    @Query("SELECT * FROM library_items WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl ORDER BY title COLLATE NOCASE")
+    @Query("SELECT * FROM library_items WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl AND parentItemId IS NULL ORDER BY title COLLATE NOCASE")
     fun observeItems(libraryId: String, originServerUrl: String): Flow<List<LibraryItemEntity>>
 
-    @Query("SELECT * FROM library_items WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl ORDER BY title COLLATE NOCASE")
+    @Query("SELECT * FROM library_items WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl AND parentItemId IS NULL ORDER BY title COLLATE NOCASE")
     suspend fun getAllItems(libraryId: String, originServerUrl: String): List<LibraryItemEntity>
 
     @Query(
         """SELECT * FROM library_items
-           WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl
+           WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl AND parentItemId IS NULL
            ORDER BY title COLLATE NOCASE
            LIMIT :limit OFFSET :offset"""
     )
@@ -175,6 +184,16 @@ interface LibraryDao {
     @Query("SELECT * FROM library_items WHERE id = :itemId AND originServerUrl = :originServerUrl")
     suspend fun getItem(itemId: String, originServerUrl: String): LibraryItemEntity?
 
+    @Query(
+        """SELECT * FROM library_items
+           WHERE parentItemId = :podcastId AND originServerUrl = :originServerUrl
+           ORDER BY updatedAt DESC, title COLLATE NOCASE"""
+    )
+    fun observePodcastEpisodes(
+        podcastId: String,
+        originServerUrl: String
+    ): Flow<List<LibraryItemEntity>>
+
     @Query("SELECT * FROM library_items WHERE originServerUrl = :originServerUrl AND id IN (:itemIds)")
     suspend fun getItems(itemIds: List<String>, originServerUrl: String): List<LibraryItemEntity>
 
@@ -183,7 +202,8 @@ interface LibraryDao {
 
     @Query(
         """SELECT * FROM library_items
-           WHERE originServerUrl = :originServerUrl AND (
+           WHERE originServerUrl = :originServerUrl
+             AND parentItemId IS NULL AND mediaType != 'podcast' AND (
               title LIKE '%' || :query || '%' COLLATE NOCASE
               OR author LIKE '%' || :query || '%' COLLATE NOCASE
               OR series LIKE '%' || :query || '%' COLLATE NOCASE
@@ -194,7 +214,8 @@ interface LibraryDao {
 
     @Query(
         """SELECT * FROM library_items
-           WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl AND (
+           WHERE libraryId = :libraryId AND originServerUrl = :originServerUrl
+              AND parentItemId IS NULL AND (
               title LIKE '%' || :query || '%' COLLATE NOCASE
               OR author LIKE '%' || :query || '%' COLLATE NOCASE
               OR series LIKE '%' || :query || '%' COLLATE NOCASE
@@ -311,6 +332,7 @@ interface ProgressDao {
              ON i.id = p.itemId AND i.originServerUrl = p.originServerUrl
            WHERE p.originServerUrl = :originServerUrl
              AND p.positionMs > 0
+             AND i.mediaType != 'podcastEpisode'
              AND (p.durationMs <= 0 OR p.positionMs < p.durationMs)
            ORDER BY p.updatedAt DESC
            LIMIT :limit"""
@@ -332,6 +354,7 @@ interface ProgressDao {
             AND d.originServerUrl = p.originServerUrl
             AND d.status = 'DOWNLOADED'
            WHERE p.positionMs > 0
+             AND i.mediaType != 'podcastEpisode'
              AND (p.durationMs <= 0 OR p.positionMs < p.durationMs)
            ORDER BY p.updatedAt DESC
            LIMIT :limit"""
@@ -365,7 +388,7 @@ interface ProgressDao {
         DownloadTrackEntity::class,
         ProgressEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -530,9 +553,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library_items ADD COLUMN parentItemId TEXT")
+                db.execSQL(
+                    "CREATE INDEX index_library_items_parentItemId_originServerUrl ON library_items(parentItemId, originServerUrl)"
+                )
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE library_items ADD COLUMN remoteSizeBytes INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "audiobookshelf.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
     }
 }

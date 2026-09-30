@@ -95,6 +95,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val playbackSpeedKey = floatPreferencesKey("playback_speed")
     private val seriesViewKey = booleanPreferencesKey("library_series_view")
     private val homeSearchKey = booleanPreferencesKey("home_search_visible")
+    private val homePodcastsKey = booleanPreferencesKey("home_podcasts_visible")
 
     val progressDisplayMode: Flow<ProgressDisplayMode> = context.settingsDataStore.data.map {
         if (it[chapterMode] == true) ProgressDisplayMode.CHAPTER else ProgressDisplayMode.BOOK
@@ -132,5 +133,14 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setHomeSearchVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homeSearchKey] = visible }
+    }
+
+    /** Shows the Podcasts entry on the main menu. Defaults to on. */
+    val homePodcastsVisible: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[homePodcastsKey] ?: true
+    }
+
+    suspend fun setHomePodcastsVisible(visible: Boolean) {
+        context.settingsDataStore.edit { it[homePodcastsKey] = visible }
     }
 }

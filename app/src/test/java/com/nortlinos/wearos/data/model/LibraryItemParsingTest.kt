@@ -1,6 +1,7 @@
 package com.nortlinos.wearos.data.model
 
 import com.google.gson.Gson
+import com.nortlinos.wearos.data.api.MediaProgressDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -109,6 +110,7 @@ class LibraryItemParsingTest {
         // must go through the accessor rather than touching the raw field.
         assertTrue(item.media.chapterList.isEmpty())
         assertTrue(item.media.trackList.isEmpty())
+        assertTrue(item.media.episodeList.isEmpty())
     }
 
     @Test
@@ -138,6 +140,67 @@ class LibraryItemParsingTest {
         assertEquals(1200.5, item.media.chapterList[0].end, 0.001)
         assertEquals(1, item.media.trackList.size)
         assertEquals("/s/item/li_hobbit/part1.m4b", item.media.trackList[0].contentUrl)
+    }
+
+    @Test
+    fun `expanded podcast item parses episodes and podcast author`() {
+        val podcast = gson.fromJson(
+            """
+                {
+                  "id": "li_podcast",
+                  "libraryId": "lib_podcasts",
+                  "mediaType": "podcast",
+                  "media": {
+                    "metadata": {
+                      "title": "Example Show",
+                      "author": "Example Publisher",
+                      "description": "A show description."
+                    },
+                    "coverPath": "/metadata/items/li_podcast/cover.jpg",
+                    "episodes": [
+                      {
+                        "id": "ep_1",
+                        "title": "Episode One",
+                        "subtitle": "An introduction",
+                        "publishedAt": 1700000000000,
+                        "audioFile": {
+                          "duration": 123.5,
+                          "metadata": {"size": 987654}
+                        }
+                      }
+                    ]
+                  },
+                  "updatedAt": 1700000000000
+                }
+            """.trimIndent(),
+            LibraryItem::class.java
+        )
+
+        assertEquals("Example Publisher", podcast.media.metadata.displayAuthor)
+        assertEquals(1, podcast.media.episodeList.size)
+        assertEquals("ep_1", podcast.media.episodeList.single().id)
+        assertEquals("Episode One", podcast.media.episodeList.single().title)
+        assertEquals(123.5, podcast.media.episodeList.single().audioFile?.duration ?: 0.0, 0.001)
+        assertEquals(987654L, podcast.media.episodeList.single().audioFile?.metadata?.size)
+    }
+
+    @Test
+    fun `podcast enclosure length parses as an estimated size`() {
+        val enclosure = gson.fromJson("""{"length":"12345"}""", PodcastEnclosure::class.java)
+
+        assertEquals(12345L, enclosure.sizeBytes)
+    }
+
+    @Test
+    fun `podcast progress preserves its episode identity`() {
+        val progress = gson.fromJson(
+            """{"libraryItemId":"li_podcast","episodeId":"ep_1","currentTime":42.5,"duration":123.5,"lastUpdate":1700000000000}""",
+            MediaProgressDto::class.java
+        )
+
+        assertEquals("li_podcast", progress.libraryItemId)
+        assertEquals("ep_1", progress.episodeId)
+        assertEquals(42.5, progress.currentTime, 0.001)
     }
 
     @Test

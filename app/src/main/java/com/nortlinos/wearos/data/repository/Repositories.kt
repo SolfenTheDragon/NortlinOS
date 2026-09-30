@@ -31,6 +31,7 @@ import com.nortlinos.wearos.data.local.ProgressEntity
 import com.nortlinos.wearos.data.local.RecentPlaybackItem
 import com.nortlinos.wearos.data.local.SessionStore
 import com.nortlinos.wearos.data.model.LibraryItem
+import com.nortlinos.wearos.data.model.PodcastEpisode
 import com.nortlinos.wearos.data.model.Server
 import com.nortlinos.wearos.service.AuthorizeOutcome
 import com.nortlinos.wearos.service.ConnectivityMonitor
@@ -444,6 +445,8 @@ class LibraryRepository @Inject constructor(
     }
     fun items(libraryId: String, originServerUrl: String): Flow<List<LibraryItemEntity>> =
         libraryDao.observeItems(libraryId, ServerIdentity.normalize(originServerUrl))
+    fun podcastEpisodes(podcastId: String, originServerUrl: String): Flow<List<LibraryItemEntity>> =
+        libraryDao.observePodcastEpisodes(podcastId, ServerIdentity.normalize(originServerUrl))
     fun item(itemId: String, originServerUrl: String): Flow<LibraryItemEntity?> =
         libraryDao.observeItem(itemId, ServerIdentity.normalize(originServerUrl))
     fun chapters(itemId: String, originServerUrl: String): Flow<List<ChapterEntity>> =
@@ -594,6 +597,7 @@ class LibraryRepository @Inject constructor(
     suspend fun refreshItem(itemId: String): Result<Unit> = networkResult {
         val server = sessionRepository.requireServer()
         val origin = ServerIdentity.normalize(server.url)
+        if (libraryDao.getItem(itemId, origin)?.parentItemId != null) return@networkResult
         val response = apiClient.scopedApi(server.url, server.token).getLibraryItem(itemId)
         if (!response.isSuccessful) throw IOException("Book: HTTP ${response.code()}")
         cacheItems(listOfNotNull(response.body()), origin)
@@ -614,7 +618,10 @@ class LibraryRepository @Inject constructor(
     ): List<LibraryItemEntity> = database.withTransaction {
         // One transaction and one batched read per page, instead of a read plus a chapter
         // rewrite per item each committing (and fsyncing) on its own.
-        val cachedById = items.map { it.id }.distinct()
+        val allIds = items.flatMap { item ->
+            listOf(item.id) + item.media.episodeList.map(PodcastEpisode::id)
+        }.distinct()
+        val cachedById = allIds
             .chunked(SQLITE_VARIABLE_CHUNK)
             .flatMap { libraryDao.getItems(it, originServerUrl) }
             .associateBy { it.id }
@@ -632,6 +639,40 @@ class LibraryRepository @Inject constructor(
             )
         }
         libraryDao.upsertItems(entities)
+        val episodeEntities = items.flatMap { podcast ->
+            if (podcast.mediaType != "podcast") return@flatMap emptyList()
+            val podcastEntity = entities.firstOrNull { it.id == podcast.id } ?: return@flatMap emptyList()
+            podcast.media.episodeList.distinctBy { it.id }.map { episode ->
+                val cachedEpisode = cachedById[episode.id]
+                LibraryItemEntity(
+                    id = episode.id,
+                    originServerUrl = originServerUrl,
+                    libraryId = podcast.libraryId,
+                    mediaType = "podcastEpisode",
+                    title = episode.title?.takeIf(String::isNotBlank)
+                        ?: cachedEpisode?.title
+                        ?: "Untitled episode",
+                    author = podcastEntity.author ?: cachedEpisode?.author,
+                    series = podcastEntity.title,
+                    narrator = null,
+                    description = episode.description ?: episode.subtitle ?: cachedEpisode?.description,
+                    coverPath = podcastEntity.coverPath ?: cachedEpisode?.coverPath,
+                    localCoverPath = cachedEpisode?.localCoverPath,
+                    durationMs = ((episode.audioFile?.duration ?: 0.0) * 1000).toLong()
+                        .takeIf { it > 0 }
+                        ?: cachedEpisode?.durationMs
+                        ?: 0,
+                    updatedAt = episode.publishedAt ?: cachedEpisode?.updatedAt ?: podcast.updatedAt,
+                    parentItemId = podcast.id,
+                    remoteSizeBytes = episode.audioFile?.metadata?.size
+                        ?.takeIf { it > 0 }
+                        ?: episode.enclosure?.sizeBytes
+                        ?: cachedEpisode?.remoteSizeBytes
+                        ?: 0
+                )
+            }
+        }
+        libraryDao.upsertItems(episodeEntities)
         items.forEach { item ->
             val chapters = item.media.chapterList
             if (chapters.isNotEmpty()) {
@@ -660,7 +701,7 @@ class LibraryRepository @Inject constructor(
             libraryId = libraryId,
             mediaType = mediaType,
             title = media.metadata.title?.takeIf { it.isNotBlank() } ?: "Untitled",
-            author = media.metadata.authorName,
+            author = media.metadata.displayAuthor,
             series = media.metadata.displaySeries,
             narrator = media.metadata.displayNarrator,
             description = media.metadata.description,
@@ -959,6 +1000,7 @@ class ProgressRepository @Inject constructor(
 class ProgressSyncEngine @Inject constructor(
     private val apiClient: ApiClient,
     private val progressDao: ProgressDao,
+    private val libraryDao: LibraryDao,
     private val sessionRepository: SessionRepository
 ) {
     data class Result(val pushed: Int, val pulled: Int, val conflicts: Int)
@@ -980,10 +1022,26 @@ class ProgressSyncEngine @Inject constructor(
         }
         val remoteEntries = currentUserResponse.body().requireBody()
             .mediaProgress
-            .associateBy { it.libraryItemId }
+            .associateBy { it.libraryItemId to it.episodeId }
 
         for (local in localEntries) {
-            val remote = remoteEntries[local.itemId]
+            val localItem = libraryDao.getItem(local.itemId, activeServerUrl)
+            val podcastId = localItem?.parentItemId
+            val remote = if (podcastId == null) {
+                remoteEntries[local.itemId to null]
+            } else {
+                val response = scopedApi.getPodcastEpisodeProgress(podcastId, local.itemId)
+                when {
+                    response.isSuccessful -> response.body()
+                    response.code() == 404 -> null
+                    else -> {
+                        if (response.code() == 401 || response.code() == 403) {
+                            sessionRepository.recoverFromUnauthorized(activeServerUrl, activeServer.token)
+                        }
+                        throw HttpException(response)
+                    }
+                }
+            }
             val remoteUpdatedAt = remote?.effectiveUpdatedAt ?: 0L
             val remotePositionMs = ((remote?.currentTime ?: 0.0) * 1000).toLong()
 
@@ -998,13 +1056,13 @@ class ProgressSyncEngine @Inject constructor(
                     conflicts++
                 }
                 ProgressSyncAction.PUSH -> {
-                    val response = scopedApi.updateProgress(
-                        local.itemId,
-                        ProgressUpdateRequest(
-                            currentTime = local.positionMs / 1000.0,
-                            duration = local.durationMs / 1000.0
-                        )
+                    val update = ProgressUpdateRequest(
+                        currentTime = local.positionMs / 1000.0,
+                        duration = local.durationMs / 1000.0
                     )
+                    val response = podcastId?.let {
+                        scopedApi.updatePodcastEpisodeProgress(it, local.itemId, update)
+                    } ?: scopedApi.updateProgress(local.itemId, update)
                     if (!response.isSuccessful) {
                         if (response.code() == 401 || response.code() == 403) {
                             sessionRepository.recoverFromUnauthorized(activeServerUrl, activeServer.token)
@@ -1042,9 +1100,13 @@ class ProgressSyncEngine @Inject constructor(
         val localIds = localEntries.mapTo(HashSet()) { it.itemId }
         val remoteOnly = remoteEntries.values.mapNotNull { remote ->
             val itemId = remote.libraryItemId ?: return@mapNotNull null
-            if (itemId in localIds) return@mapNotNull null
+            val progressItemId = remote.episodeId ?: itemId
+            if (progressItemId in localIds) return@mapNotNull null
+            if (remote.episodeId != null &&
+                libraryDao.getItem(progressItemId, activeServerUrl) == null
+            ) return@mapNotNull null
             ProgressEntity(
-                itemId = itemId,
+                itemId = progressItemId,
                 originServerUrl = activeServerUrl,
                 positionMs = (remote.currentTime * 1000).toLong(),
                 durationMs = (remote.duration * 1000).toLong(),

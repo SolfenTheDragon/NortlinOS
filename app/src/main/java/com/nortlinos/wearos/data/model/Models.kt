@@ -34,7 +34,8 @@ data class Media(
     val coverPath: String?,
     val tracks: List<AudioTrack>?,
     val duration: Double?,
-    val chapters: List<Chapter>? = null
+    val chapters: List<Chapter>? = null,
+    val episodes: List<PodcastEpisode>? = null
 ) {
     /**
      * Gson allocates Kotlin objects without invoking their constructors, so a default value never
@@ -45,17 +46,44 @@ data class Media(
     val chapterList: List<Chapter> get() = chapters.orEmpty()
 
     val trackList: List<AudioTrack> get() = tracks.orEmpty()
+    val episodeList: List<PodcastEpisode> get() = episodes.orEmpty()
+}
+
+data class PodcastEpisode(
+    val id: String,
+    val title: String?,
+    val subtitle: String? = null,
+    val description: String? = null,
+    val publishedAt: Long? = null,
+    val audioFile: PodcastAudioFile? = null,
+    val enclosure: PodcastEnclosure? = null
+)
+
+data class PodcastAudioFile(
+    val duration: Double? = null,
+    val metadata: PodcastAudioMetadata? = null
+)
+
+data class PodcastAudioMetadata(val size: Long? = null)
+
+data class PodcastEnclosure(val length: String? = null) {
+    val sizeBytes: Long? get() = length?.toLongOrNull()?.takeIf { it > 0 }
 }
 
 data class Metadata(
     val title: String?,
     val authorName: String?,
     val description: String?,
+    val author: String? = null,
     val seriesName: String? = null,
     val series: List<SeriesRef>? = null,
     val narratorName: String? = null,
     val narrators: List<String>? = null
 ) {
+    val displayAuthor: String?
+        get() = authorName?.takeIf { it.isNotBlank() }
+            ?: author?.takeIf { it.isNotBlank() }
+
     /**
      * Minified responses flatten the series to `seriesName`; expanded responses send a `series`
      * array of objects instead. Prefer the flattened string and rebuild "Name #sequence" from the
