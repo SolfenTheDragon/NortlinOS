@@ -45,6 +45,8 @@ phone at home, and pick up exactly where you left off on any device.
   - previous/next chapter, or All chapters to jump straight to any chapter;
   - a sleep timer (any length up to 12 hours);
   - playback speed;
+  - **Bookmark this spot** to save the current position (books only), then **View bookmarks** to
+    jump back to any saved spot or hold one to remove it.
 - **Keep your place everywhere.** Book and podcast episode progress syncs with your server
   automatically, so the phone app, the web player and the watch agree. If the watch and another
   device both moved on while out of touch, NortlinOS asks which position to keep instead of

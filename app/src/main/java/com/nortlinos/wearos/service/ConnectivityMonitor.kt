@@ -15,13 +15,20 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.nortlinos.wearos.data.local.ProgressDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.asStateFlow
 
 @Singleton
 class ConnectivityMonitor @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val progressDao: ProgressDao
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
     private val _online = MutableStateFlow(isValidatedNetworkAvailable())
     val online = _online.asStateFlow()
@@ -46,7 +53,14 @@ class ConnectivityMonitor @Inject constructor(
         override fun onAvailable(network: Network) {
             _networkAvailable.value = true
             _online.value = isValidatedNetworkAvailable()
-            enqueueImmediateSync()
+            // A watch hands its default network between the phone's Bluetooth proxy, Wi-Fi and
+            // LTE many times a day, and registering the callback reports the current network too.
+            // Only local progress still waiting to be pushed needs the radio right now; pulling
+            // other devices' progress is covered by the foreground and periodic syncs, and an
+            // unconditional REPLACE here would also cancel the foreground sync started at launch.
+            scope.launch {
+                if (progressDao.hasDirty()) enqueueImmediateSync()
+            }
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {

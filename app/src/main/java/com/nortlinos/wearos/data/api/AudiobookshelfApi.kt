@@ -7,6 +7,7 @@ import com.nortlinos.wearos.data.model.PlaybackSession
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.PATCH
@@ -96,12 +97,6 @@ interface AudiobookshelfApi {
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
-    @GET("api/me/progress/{id}/{episodeId}")
-    suspend fun getPodcastEpisodeProgress(
-        @Path("id") itemId: String,
-        @Path("episodeId") episodeId: String
-    ): Response<MediaProgressDto>
-
     @PATCH("api/me/progress/{id}")
     suspend fun updateProgress(
         @Path("id") itemId: String,
@@ -113,6 +108,18 @@ interface AudiobookshelfApi {
         @Path("id") itemId: String,
         @Path("episodeId") episodeId: String,
         @Body body: ProgressUpdateRequest
+    ): Response<Unit>
+
+    @POST("api/me/item/{id}/bookmark")
+    suspend fun createBookmark(
+        @Path("id") itemId: String,
+        @Body body: BookmarkRequest
+    ): Response<AudioBookmarkDto>
+
+    @DELETE("api/me/item/{id}/bookmark/{time}")
+    suspend fun deleteBookmark(
+        @Path("id") itemId: String,
+        @Path("time") time: Int
     ): Response<Unit>
 }
 
@@ -175,5 +182,13 @@ data class MediaProgressDto(
 data class CurrentUserDto(
     val id: String,
     val username: String,
-    val mediaProgress: List<MediaProgressDto> = emptyList()
+    val mediaProgress: List<MediaProgressDto> = emptyList(),
+    val bookmarks: List<AudioBookmarkDto> = emptyList()
+)
+data class BookmarkRequest(val time: Int, val title: String)
+data class AudioBookmarkDto(
+    val libraryItemId: String? = null,
+    val title: String = "",
+    val time: Int = 0,
+    val createdAt: Long = 0L
 )

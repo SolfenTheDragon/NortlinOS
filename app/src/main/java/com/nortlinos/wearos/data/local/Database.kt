@@ -315,6 +315,9 @@ interface ProgressDao {
         limit: Int
     ): Flow<List<ProgressEntity>>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM progress WHERE dirty = 1)")
+    suspend fun hasDirty(): Boolean
+
     @Query("SELECT * FROM progress WHERE conflictPositionMs IS NOT NULL")
     fun observeConflicts(): Flow<List<ProgressEntity>>
 

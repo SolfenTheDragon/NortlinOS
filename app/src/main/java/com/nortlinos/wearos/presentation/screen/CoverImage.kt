@@ -82,9 +82,14 @@ internal fun coverRequest(
     decodeSizePx: Int? = null
 ): ImageRequest? {
     if (coverPath.isNullOrEmpty()) return null
-    val localFile = File(coverPath)
-    val data: Any = if (localFile.isAbsolute && localFile.exists()) {
-        localFile
+    // Classified by shape rather than File.exists(): this runs in composition as each row scrolls
+    // in, and a stat per row is main-thread disk I/O. ApiClient.coverSource only yields a server
+    // endpoint (/api/…, or a full URL) or an absolute downloaded-cover path. A missing local file
+    // simply fails to load in Coil, as the old bogus "server + local path" URL did after a 404.
+    val isRemote = coverPath.startsWith("/api/") ||
+        coverPath.startsWith("http://") || coverPath.startsWith("https://")
+    val data: Any = if (!isRemote && File(coverPath).isAbsolute) {
+        File(coverPath)
     } else {
         if (baseUrl.isNullOrEmpty()) return null
         ApiClient.sizedCoverUrl(ApiClient.resolveUrl(baseUrl, coverPath), COVER_REQUEST_WIDTH_PX)

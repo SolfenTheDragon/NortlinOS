@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Forward30
@@ -53,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -149,8 +152,10 @@ import com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel
 import com.nortlinos.wearos.service.SleepTimerState
 import com.nortlinos.wearos.service.SleepTimerMath
 import com.nortlinos.wearos.data.api.ApiClient
+import com.nortlinos.wearos.data.api.AudioBookmarkDto
 import java.util.concurrent.TimeUnit
 import android.net.Uri
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -159,7 +164,7 @@ fun LoginScreen(
     hasDownloads: Boolean,
     onListenOffline: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val serverInput = textInput("Server URL", viewModel::serverUrl)
     val usernameInput = textInput("Username", viewModel::username)
     val passwordInput = textInput("Password", viewModel::password)
@@ -243,11 +248,11 @@ fun HomeScreen(
     onNowPlaying: () -> Unit,
     onSettings: () -> Unit
 ) {
-    val player by playerViewModel.nowPlaying.collectAsState()
-    val server by libraryViewModel.sessionRepository.session.collectAsState()
-    val online by libraryViewModel.online.collectAsState()
-    val searchVisible by settingsViewModel.homeSearchVisible.collectAsState()
-    val podcastsVisible by settingsViewModel.homePodcastsVisible.collectAsState()
+    val player by playerViewModel.nowPlaying.collectAsStateWithLifecycle()
+    val server by libraryViewModel.sessionRepository.session.collectAsStateWithLifecycle()
+    val online by libraryViewModel.online.collectAsStateWithLifecycle()
+    val searchVisible by settingsViewModel.homeSearchVisible.collectAsStateWithLifecycle()
+    val podcastsVisible by settingsViewModel.homePodcastsVisible.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle(stringResource(R.string.app_name)) }
         player.itemId?.let {
@@ -314,9 +319,9 @@ fun RecentPlaybackScreen(
     libraryViewModel: LibraryViewModel,
     onItem: (String, String) -> Unit
 ) {
-    val recent by libraryViewModel.recentPlayback.collectAsState()
-    val online by libraryViewModel.online.collectAsState()
-    val server by libraryViewModel.activeSession.collectAsState()
+    val recent by libraryViewModel.recentPlayback.collectAsStateWithLifecycle()
+    val online by libraryViewModel.online.collectAsStateWithLifecycle()
+    val server by libraryViewModel.activeSession.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Recent books") }
         item {
@@ -380,10 +385,10 @@ fun LibraryScreen(
     podcastsOnly: Boolean,
     onLibrary: (String, String) -> Unit
 ) {
-    val libraries by viewModel.libraries.collectAsState()
+    val libraries by viewModel.libraries.collectAsStateWithLifecycle()
     val visibleLibraries = libraries.filter { (it.mediaType == "podcast") == podcastsOnly }
-    val error by viewModel.error.collectAsState()
-    val refreshing by viewModel.refreshingLibraries.collectAsState()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshingLibraries.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.refreshLibraries() }
     WearList {
         item { ScreenTitle(if (podcastsOnly) "Podcast libraries" else "Book libraries") }
@@ -429,8 +434,8 @@ fun LibraryItemsScreen(
     playerViewModel: PlayerViewModel,
     settingsViewModel: SettingsViewModel
 ) {
-    val seriesViewDefault by settingsViewModel.seriesView.collectAsState()
-    val libraries by viewModel.libraries.collectAsState()
+    val seriesViewDefault by settingsViewModel.seriesView.collectAsStateWithLifecycle()
+    val libraries by viewModel.libraries.collectAsStateWithLifecycle()
     val isPodcastLibrary = libraries.firstOrNull {
         it.id == libraryId &&
             com.nortlinos.wearos.data.repository.ServerIdentity.matches(
@@ -447,9 +452,9 @@ fun LibraryItemsScreen(
         showSeries.value = seriesViewDefault && !isPodcastLibrary
     }
     val selectedSeriesName = remember(libraryId, originServerUrl) { mutableStateOf<String?>(null) }
-    val browse by viewModel.libraryBrowse.collectAsState()
-    val seriesBrowse by viewModel.librarySeries.collectAsState()
-    val seriesDownload by viewModel.seriesDownload.collectAsState()
+    val browse by viewModel.libraryBrowse.collectAsStateWithLifecycle()
+    val seriesBrowse by viewModel.librarySeries.collectAsStateWithLifecycle()
+    val seriesDownload by viewModel.seriesDownload.collectAsStateWithLifecycle()
     val activeBrowse = if (
         browse.libraryId == libraryId &&
         browse.originServerUrl == com.nortlinos.wearos.data.repository.ServerIdentity.normalize(
@@ -457,9 +462,9 @@ fun LibraryItemsScreen(
         )
     ) browse else LibraryBrowseState()
     val books = activeBrowse.items
-    val downloads by viewModel.downloadStatuses.collectAsState()
-    val server by viewModel.sessionRepository.session.collectAsState()
-    val player by playerViewModel.nowPlaying.collectAsState()
+    val downloads by viewModel.downloadStatuses.collectAsStateWithLifecycle()
+    val server by viewModel.sessionRepository.session.collectAsStateWithLifecycle()
+    val player by playerViewModel.nowPlaying.collectAsStateWithLifecycle()
     val statuses = remember(downloads) {
         downloads.associate { (it.itemId to it.originServerUrl) to it.status }
     }
@@ -796,11 +801,11 @@ fun BookDetailScreen(
     val item by itemFlow.collectAsState(initial = null)
     val download by downloadFlow.collectAsState(initial = null)
     val episodes by episodeFlow.collectAsState(initial = emptyList())
-    val downloadStatuses by viewModel.downloadStatuses.collectAsState()
-    val podcastSeriesDownload by viewModel.podcastSeriesDownload.collectAsState()
-    val online by viewModel.online.collectAsState()
-    val server by viewModel.sessionRepository.session.collectAsState()
-    val refreshingItemId by viewModel.refreshingItemId.collectAsState()
+    val downloadStatuses by viewModel.downloadStatuses.collectAsStateWithLifecycle()
+    val podcastSeriesDownload by viewModel.podcastSeriesDownload.collectAsStateWithLifecycle()
+    val online by viewModel.online.collectAsStateWithLifecycle()
+    val server by viewModel.sessionRepository.session.collectAsStateWithLifecycle()
+    val refreshingItemId by viewModel.refreshingItemId.collectAsStateWithLifecycle()
     val confirmDelete = remember { mutableStateOf(false) }
     val confirmCancel = remember { mutableStateOf(false) }
     val confirmPodcastSeriesDelete = remember { mutableStateOf(false) }
@@ -1185,7 +1190,7 @@ fun EpisodeDetailScreen(
     }
     val episode by itemFlow.collectAsState(initial = null)
     val download by downloadFlow.collectAsState(initial = null)
-    val server by viewModel.sessionRepository.session.collectAsState()
+    val server by viewModel.sessionRepository.session.collectAsStateWithLifecycle()
     val confirmDelete = remember { mutableStateOf(false) }
     val confirmCancel = remember { mutableStateOf(false) }
     DownloadOutcomeConfirmation(download?.status)
@@ -1322,8 +1327,8 @@ private fun DownloadOutcomeConfirmation(status: DownloadStatus?) {
 
 @Composable
 fun DownloadedScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) {
-    val books by viewModel.downloaded.collectAsState()
-    val server by viewModel.sessionRepository.session.collectAsState()
+    val books by viewModel.downloaded.collectAsStateWithLifecycle()
+    val server by viewModel.sessionRepository.session.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Downloaded") }
         val grouped = books.groupBy {
@@ -1364,8 +1369,8 @@ fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) 
     val input = textInput("Search title, author, or series") { query.value = it }
     val flow = remember(query.value) { viewModel.search(query.value) }
     val results by flow.collectAsState(initial = emptyList())
-    val downloads by viewModel.downloadStatuses.collectAsState()
-    val server by viewModel.sessionRepository.session.collectAsState()
+    val downloads by viewModel.downloadStatuses.collectAsStateWithLifecycle()
+    val server by viewModel.sessionRepository.session.collectAsStateWithLifecycle()
     val statuses = remember(downloads) {
         downloads.associate { (it.itemId to it.originServerUrl) to it.status }
     }
@@ -1404,14 +1409,22 @@ fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) 
 
 @Composable
 fun PlayerScreen(viewModel: PlayerViewModel, isAmbient: Boolean = false) {
-    val state by viewModel.state.collectAsState()
-    val activeSession by viewModel.activeSession.collectAsState()
-    val sleepTimer by viewModel.sleepTimer.collectAsState()
-    val playbackSpeed by viewModel.playbackSpeed.collectAsState()
-    val outputPrompt by viewModel.outputPrompt.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val activeSession by viewModel.activeSession.collectAsStateWithLifecycle()
+    val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
+    val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val outputPrompt by viewModel.outputPrompt.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val bookmarkError by viewModel.bookmarkError.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(isAmbient) {
         viewModel.setAmbientMode(isAmbient)
+    }
+    LaunchedEffect(bookmarkError) {
+        if (bookmarkError != null) {
+            delay(3_000)
+            viewModel.dismissBookmarkError()
+        }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -1476,7 +1489,7 @@ fun PlayerScreen(viewModel: PlayerViewModel, isAmbient: Boolean = false) {
                 )
                 val pagerScope = rememberCoroutineScope()
                 // A tile tap should land on the controls even if the tools page was left open.
-                val controlsPageRequests by viewModel.controlsPageRequests.collectAsState()
+                val controlsPageRequests by viewModel.controlsPageRequests.collectAsStateWithLifecycle()
                 LaunchedEffect(controlsPageRequests) {
                     pagerState.scrollToPage(pages.indexOf(PlaybackPage.NOW_PLAYING))
                 }
@@ -1504,6 +1517,12 @@ fun PlayerScreen(viewModel: PlayerViewModel, isAmbient: Boolean = false) {
                             onCancelSleepTimer = viewModel::cancelSleepTimer,
                             playbackSpeed = playbackSpeed,
                             onSetPlaybackSpeed = viewModel::setPlaybackSpeed,
+                            showBookmarks = !state.isPodcastEpisode,
+                            bookmarks = bookmarks,
+                            bookmarkError = bookmarkError,
+                            onAddBookmark = viewModel::addBookmark,
+                            onSelectBookmark = viewModel::seekToBookmark,
+                            onDeleteBookmark = viewModel::deleteBookmark,
                             modifier = Modifier.consumeSwipe(SwipeDirection.RIGHT) {
                                 pagerScope.launch {
                                     pagerState.animateScrollToPage(
@@ -1598,7 +1617,7 @@ private fun ProgressConflictDialog(
                 label = { Text("This watch") },
                 secondaryLabel = {
                     // Collected here so the position only recomposes while the dialog is shown.
-                    val watchPosition by position.collectAsState()
+                    val watchPosition by position.collectAsStateWithLifecycle()
                     Text(time(watchPosition.bookPositionMs))
                 },
                 icon = { Icon(Icons.Default.Watch, null) },
@@ -1809,7 +1828,7 @@ private fun ChapterRing(
     ambient: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val current = position.collectAsState()
+    val current = position.collectAsStateWithLifecycle()
     // Ambient keeps a thin grey outline only, so few pixels stay lit.
     val fill = if (ambient) Color.Gray else MaterialTheme.colorScheme.primary
     val track = if (ambient) Color.DarkGray else Color.White.copy(alpha = 0.22f)
@@ -1868,7 +1887,7 @@ private fun PlaybackProgress(
     ambient: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val current = position.collectAsState()
+    val current = position.collectAsStateWithLifecycle()
     val fill = if (ambient) Color.Gray else Color.White
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (showBar) Box(
@@ -1938,10 +1957,29 @@ private fun PlaybackToolsPage(
     onCancelSleepTimer: () -> Unit,
     playbackSpeed: Float,
     onSetPlaybackSpeed: (Float) -> Unit,
+    showBookmarks: Boolean,
+    bookmarks: List<AudioBookmarkDto>,
+    bookmarkError: String?,
+    onAddBookmark: () -> Unit,
+    onSelectBookmark: (AudioBookmarkDto) -> Unit,
+    onDeleteBookmark: (AudioBookmarkDto) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showCustomTimer = remember { mutableStateOf(false) }
     val showChapters = remember { mutableStateOf(false) }
+    val showBookmarkList = remember { mutableStateOf(false) }
+    if (showBookmarkList.value) {
+        BookmarkList(
+            bookmarks = bookmarks,
+            onSelect = { bookmark ->
+                showBookmarkList.value = false
+                onSelectBookmark(bookmark)
+            },
+            onDelete = onDeleteBookmark,
+            modifier = modifier
+        )
+        return
+    }
     if (showChapters.value) {
         ChapterList(
             chapters = chapters,
@@ -2084,6 +2122,33 @@ private fun PlaybackToolsPage(
                     )
                 }
             }
+            if (showBookmarks) {
+                item(key = "bookmark-status") {
+                    SupportingText(
+                        if (bookmarks.isEmpty()) "Bookmarks" else "Bookmarks \u00b7 ${bookmarks.size}"
+                    )
+                }
+                item(key = "bookmark-add") {
+                    WearChip(
+                        onClick = onAddBookmark,
+                        label = { Text("Bookmark this spot") },
+                        secondaryLabel = bookmarkError?.let { { Text(it) } },
+                        icon = { Icon(Icons.Filled.BookmarkAdd, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (bookmarks.isNotEmpty()) {
+                    item(key = "bookmark-list") {
+                        WearChip(
+                            onClick = { showBookmarkList.value = true },
+                            label = { Text("View bookmarks") },
+                            secondaryLabel = { Text("Jump to a saved spot") },
+                            icon = { Icon(Icons.Filled.Bookmark, null) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -2114,6 +2179,35 @@ private fun ChapterList(
                         Text("${time(chapter.startMs)} \u00b7 ${time(chapter.durationMs)} long")
                     },
                     style = if (index == currentIndex) ChipStyle.PRIMARY else ChipStyle.TONAL,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Saved bookmarks for the current book, newest last (server order). Tapping one seeks there and
+ * returns to the tools list; the delete icon removes it without leaving the list.
+ */
+@Composable
+private fun BookmarkList(
+    bookmarks: List<AudioBookmarkDto>,
+    onSelect: (AudioBookmarkDto) -> Unit,
+    onDelete: (AudioBookmarkDto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        WearList(showTime = false) {
+            item { ScreenTitle("Bookmarks") }
+            items(bookmarks, key = { it.time }) { bookmark ->
+                WearChip(
+                    onClick = { onSelect(bookmark) },
+                    onLongClick = { onDelete(bookmark) },
+                    onLongClickLabel = "Remove bookmark",
+                    label = { Text(bookmark.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    secondaryLabel = { Text("${time(bookmark.time * 1000L)} \u00b7 hold to remove") },
+                    icon = { Icon(Icons.Filled.Bookmark, null) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -2226,13 +2320,13 @@ private fun sleepTimerMinutes(remainingMs: Long): String {
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
-    val mode by viewModel.mode.collectAsState()
-    val storage by viewModel.storageStats.collectAsState()
-    val downloadedBooks by viewModel.downloadedBooks.collectAsState()
+    val mode by viewModel.mode.collectAsStateWithLifecycle()
+    val storage by viewModel.storageStats.collectAsStateWithLifecycle()
+    val downloadedBooks by viewModel.downloadedBooks.collectAsStateWithLifecycle()
     val confirmLogout = remember { mutableStateOf(false) }
-    val seriesView by viewModel.seriesView.collectAsState()
-    val searchVisible by viewModel.homeSearchVisible.collectAsState()
-    val podcastsVisible by viewModel.homePodcastsVisible.collectAsState()
+    val seriesView by viewModel.seriesView.collectAsStateWithLifecycle()
+    val searchVisible by viewModel.homeSearchVisible.collectAsStateWithLifecycle()
+    val podcastsVisible by viewModel.homePodcastsVisible.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Settings") }
         item { SupportingText("Downloads") }
@@ -2339,19 +2433,24 @@ private fun WearList(
  * Wraps [TransformingLazyColumnScope] so every item publishes its transformation through
  * [LocalListItemTransform]. List surfaces ([WearChip], [ChoiceChip], [ScreenTitle]) pick it up and
  * morph as they scroll to the curved edge; plain text and images are left untouched.
+ *
+ * Repeated rows and one-off items get different `contentType`s, so while scrolling a recycled
+ * slot is only reused for the same kind of row (a cover card for a cover card) instead of
+ * tearing down a card's composition to build a header chip and back.
  */
 private class WearListScope(
     private val scope: TransformingLazyColumnScope,
     private val spec: TransformationSpec
 ) {
     fun item(key: Any? = null, content: @Composable () -> Unit) {
-        scope.item(key = key) { TransformedItem(this, spec, content) }
+        scope.item(key = key, contentType = SINGLE_ITEM) { TransformedItem(this, spec, content) }
     }
 
     fun <T> items(items: List<T>, key: ((T) -> Any)? = null, content: @Composable (T) -> Unit) {
         scope.items(
             count = items.size,
-            key = key?.let { itemKey -> { index: Int -> itemKey(items[index]) } }
+            key = key?.let { itemKey -> { index: Int -> itemKey(items[index]) } },
+            contentType = { REPEATED_ROW }
         ) { index -> TransformedItem(this, spec) { content(items[index]) } }
     }
 
@@ -2362,8 +2461,14 @@ private class WearListScope(
     ) {
         scope.items(
             count = items.size,
-            key = key?.let { itemKey -> { index: Int -> itemKey(index, items[index]) } }
+            key = key?.let { itemKey -> { index: Int -> itemKey(index, items[index]) } },
+            contentType = { REPEATED_ROW }
         ) { index -> TransformedItem(this, spec) { content(index, items[index]) } }
+    }
+
+    private companion object {
+        const val SINGLE_ITEM = "single"
+        const val REPEATED_ROW = "row"
     }
 }
 

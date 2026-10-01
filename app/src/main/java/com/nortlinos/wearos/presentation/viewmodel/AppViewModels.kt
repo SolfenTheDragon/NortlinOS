@@ -18,6 +18,8 @@ import com.nortlinos.wearos.data.local.LibraryEntity
 import com.nortlinos.wearos.data.local.LibraryItemEntity
 import com.nortlinos.wearos.data.local.ProgressDisplayMode
 import com.nortlinos.wearos.data.local.SettingsStore
+import com.nortlinos.wearos.data.api.AudioBookmarkDto
+import com.nortlinos.wearos.data.repository.BookmarkRepository
 import com.nortlinos.wearos.data.repository.DownloadRepository
 import com.nortlinos.wearos.data.repository.LibraryRepository
 import com.nortlinos.wearos.data.repository.ProgressRepository
@@ -50,6 +52,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 data class LoginUiState(
@@ -870,6 +873,8 @@ data class PlayerUiState(
     val conflictPositionMs: Long? = null,
     val originServerUrl: String? = null,
     val coverPath: String? = null,
+    /** Bookmarks are a book-timeline feature; podcast episodes don't have a documented mapping. */
+    val isPodcastEpisode: Boolean = false,
     /** The book's chapters, for the chapter list. The same instance until the book changes. */
     val chapters: List<ChapterOption> = emptyList(),
     /** Chapter starts as fractions of the book (first excluded), for the progress ring's gaps. */
@@ -948,6 +953,19 @@ internal object PlaybackSpeedFormat {
     fun sanitize(speed: Float): Float = if (speed in PRESETS) speed else 1.0f
 }
 
+/** Formats the auto-generated title given to a bookmark created from the current position. */
+internal object BookmarkTitleFormat {
+    fun forPosition(positionMs: Long): String {
+        val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(positionMs.coerceAtLeast(0))
+        val label = if (totalSeconds >= 3600) {
+            "%d:%02d:%02d".format(totalSeconds / 3600, totalSeconds / 60 % 60, totalSeconds % 60)
+        } else {
+            "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+        }
+        return "Bookmark at $label"
+    }
+}
+
 /**
  * Maps chapter skips onto absolute book positions.
  *
@@ -1012,6 +1030,7 @@ class PlayerViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val downloadRepository: DownloadRepository,
     private val progressRepository: ProgressRepository,
+    private val bookmarkRepository: BookmarkRepository,
     private val sleepTimerManager: SleepTimerManager,
     private val connectivityMonitor: ConnectivityMonitor,
     private val settingsStore: SettingsStore,
@@ -1063,6 +1082,12 @@ class PlayerViewModel @Inject constructor(
     private val _outputPrompt = MutableStateFlow<OutputPrompt?>(null)
     /** Non-null while the player is asking how to listen because no headphones are connected. */
     val outputPrompt: StateFlow<OutputPrompt?> = _outputPrompt.asStateFlow()
+    private val _bookmarks = MutableStateFlow<List<AudioBookmarkDto>>(emptyList())
+    /** Bookmarks for the currently loaded book, newest fetch wins; cleared when the book changes. */
+    val bookmarks: StateFlow<List<AudioBookmarkDto>> = _bookmarks.asStateFlow()
+    private val _bookmarkError = MutableStateFlow<String?>(null)
+    val bookmarkError: StateFlow<String?> = _bookmarkError.asStateFlow()
+    private var bookmarksJob: Job? = null
     private var speakerAccepted = false
     private var headsetWaiter: Job? = null
     private var pendingConnects: MutableList<(MediaController) -> Unit>? = null
@@ -1092,6 +1117,9 @@ class PlayerViewModel @Inject constructor(
         if (isLoaded(itemId, originServerUrl)) return
         _state.value = PlayerUiState(loading = true, itemId = itemId)
         _position.value = PlaybackPosition()
+        _bookmarks.value = emptyList()
+        _bookmarkError.value = null
+        bookmarksJob?.cancel()
         progressObserver?.cancel()
         viewModelScope.launch {
             chapters = libraryRepository.chapters(itemId, normalizedOrigin).first()
@@ -1102,7 +1130,12 @@ class PlayerViewModel @Inject constructor(
                 return@launch
             }
             currentOriginServerUrl = normalizedOrigin
-            _state.value = _state.value.copy(originServerUrl = originServerUrl)
+            val isPodcastEpisode = (local?.item?.parentItemId ?: item?.parentItemId) != null
+            _state.value = _state.value.copy(
+                originServerUrl = originServerUrl,
+                isPodcastEpisode = isPodcastEpisode
+            )
+            if (!isPodcastEpisode) loadBookmarks(itemId)
             observeProgress(itemId, normalizedOrigin)
             connect { mediaController ->
                 viewModelScope.launch playbackLoad@{
@@ -1269,6 +1302,48 @@ class PlayerViewModel @Inject constructor(
 
     fun seekToChapter(index: Int) {
         chapters.getOrNull(index)?.let { seekToBookPosition(it.startMs) }
+    }
+
+    private fun loadBookmarks(itemId: String) {
+        bookmarksJob?.cancel()
+        bookmarksJob = viewModelScope.launch {
+            bookmarkRepository.list(itemId).fold(
+                onSuccess = { _bookmarks.value = it },
+                onFailure = { /* Leave any previous list; a load failure isn't worth surfacing. */ }
+            )
+        }
+    }
+
+    /** Bookmarks the current position with an auto-generated title; re-lists on success. */
+    fun addBookmark() {
+        val itemId = state.value.itemId ?: return
+        if (state.value.isPodcastEpisode) return
+        val positionMs = bookPosition() ?: return
+        val timeSeconds = (positionMs / 1000L).toInt()
+        viewModelScope.launch {
+            bookmarkRepository.create(itemId, timeSeconds, BookmarkTitleFormat.forPosition(positionMs)).fold(
+                onSuccess = { loadBookmarks(itemId) },
+                onFailure = { _bookmarkError.value = "Couldn't save bookmark" }
+            )
+        }
+    }
+
+    fun deleteBookmark(bookmark: AudioBookmarkDto) {
+        val itemId = state.value.itemId ?: return
+        viewModelScope.launch {
+            bookmarkRepository.delete(itemId, bookmark.time).fold(
+                onSuccess = { loadBookmarks(itemId) },
+                onFailure = { _bookmarkError.value = "Couldn't remove bookmark" }
+            )
+        }
+    }
+
+    fun seekToBookmark(bookmark: AudioBookmarkDto) {
+        seekToBookPosition(bookmark.time * 1000L)
+    }
+
+    fun dismissBookmarkError() {
+        _bookmarkError.value = null
     }
 
     /** Current whole-book position, spanning the per-file media items. */
@@ -1466,6 +1541,15 @@ class PlayerViewModel @Inject constructor(
             originServerUrl = originServerUrl
         )
         observeProgress(itemId, originServerUrl)
+        viewModelScope.launch {
+            val normalizedOrigin = ServerIdentity.normalize(originServerUrl)
+            val isPodcastEpisode = (
+                downloadRepository.getBook(itemId, normalizedOrigin)?.item?.parentItemId
+                    ?: libraryRepository.getItem(itemId, normalizedOrigin)?.parentItemId
+                ) != null
+            _state.value = _state.value.copy(isPodcastEpisode = isPodcastEpisode)
+            if (!isPodcastEpisode) loadBookmarks(itemId)
+        }
         viewModelScope.launch {
             // Fetched fresh rather than read from the (eagerly-started) playbackSpeed StateFlow:
             // this runs at ViewModel construction, before that flow's first DataStore read is

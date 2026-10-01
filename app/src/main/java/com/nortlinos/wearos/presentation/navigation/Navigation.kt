@@ -3,7 +3,7 @@ package com.nortlinos.wearos.presentation.navigation
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -56,7 +56,7 @@ fun AppNavHost(
     val libraryViewModel: LibraryViewModel = hiltViewModel()
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val session by libraryViewModel.sessionRepository.session.collectAsState()
+    val session by libraryViewModel.sessionRepository.session.collectAsStateWithLifecycle()
 
     LaunchedEffect(session) {
         if (session == null) {
@@ -81,7 +81,7 @@ fun AppNavHost(
         startDestination = if (session == null) Routes.LOGIN else Routes.HOME
     ) {
         composable(Routes.LOGIN) {
-            val downloaded by libraryViewModel.downloaded.collectAsState()
+            val downloaded by libraryViewModel.downloaded.collectAsStateWithLifecycle()
             LoginScreen(
                 viewModel = hiltViewModel(),
                 hasDownloads = downloaded.isNotEmpty(),

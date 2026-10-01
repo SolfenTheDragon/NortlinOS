@@ -13,7 +13,9 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 import com.nortlinos.wearos.data.api.ApiClient
+import com.nortlinos.wearos.data.api.AudioBookmarkDto
 import com.nortlinos.wearos.data.api.AudiobookshelfApi
+import com.nortlinos.wearos.data.api.BookmarkRequest
 import com.nortlinos.wearos.data.api.LoginRequest
 import com.nortlinos.wearos.data.api.OidcFlow
 import com.nortlinos.wearos.data.api.ProgressUpdateRequest
@@ -743,8 +745,14 @@ class DownloadRepository @Inject constructor(
         val error: String? = null
     )
 
+    /**
+     * The query joins `library_items`, so every library page refresh or metadata write re-emits
+     * an identical list. Each emission costs one track query plus a file stat per track for every
+     * downloaded book, so unchanged lists are dropped before that work. Any real change (a book
+     * finishing, being removed, or its row being updated) still re-verifies the files.
+     */
     fun downloadedBooks(): Flow<List<DownloadedBookData>> =
-        downloadDao.observeDownloadedItems().map { items ->
+        downloadDao.observeDownloadedItems().distinctUntilChanged().map { items ->
             withContext(Dispatchers.IO) {
                 items.mapNotNull { item -> readyBook(item) }
             }
@@ -996,6 +1004,55 @@ class ProgressRepository @Inject constructor(
     }
 }
 
+/**
+ * Audio bookmarks (a named timestamp within a book) are server-only: unlike progress they have
+ * no offline fallback, so every call here requires connectivity and nothing is cached locally.
+ */
+@Singleton
+class BookmarkRepository @Inject constructor(
+    private val apiClient: ApiClient,
+    private val sessionRepository: SessionRepository,
+    private val connectivityMonitor: ConnectivityMonitor
+) {
+    suspend fun list(itemId: String): Result<List<AudioBookmarkDto>> = withContext(Dispatchers.IO) {
+        if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
+        runCatching {
+            val server = sessionRepository.requireServer()
+            val response = apiClient.scopedApi(server.url, server.token).getCurrentUser()
+            if (!response.isSuccessful) throw IOException("Bookmarks: HTTP ${response.code()}")
+            response.body().requireBody().bookmarks
+                .filter { it.libraryItemId == itemId }
+                .sortedBy { it.time }
+        }
+    }
+
+    suspend fun create(itemId: String, timeSeconds: Int, title: String): Result<AudioBookmarkDto> =
+        withContext(Dispatchers.IO) {
+            if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
+            runCatching {
+                val server = sessionRepository.requireServer()
+                val response = apiClient.scopedApi(server.url, server.token)
+                    .createBookmark(itemId, BookmarkRequest(timeSeconds, title))
+                if (!response.isSuccessful) throw IOException("Bookmark: HTTP ${response.code()}")
+                response.body().requireBody()
+            }
+        }
+
+    suspend fun delete(itemId: String, timeSeconds: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
+        runCatching {
+            val server = sessionRepository.requireServer()
+            val response = apiClient.scopedApi(server.url, server.token)
+                .deleteBookmark(itemId, timeSeconds)
+            // The bookmark may already be gone (e.g. deleted from another device); that is not a
+            // failure worth surfacing since the end state the caller wants is already true.
+            if (!response.isSuccessful && response.code() != 404) {
+                throw IOException("Bookmark: HTTP ${response.code()}")
+            }
+        }
+    }
+}
+
 @Singleton
 class ProgressSyncEngine @Inject constructor(
     private val apiClient: ApiClient,
@@ -1027,21 +1084,9 @@ class ProgressSyncEngine @Inject constructor(
         for (local in localEntries) {
             val localItem = libraryDao.getItem(local.itemId, activeServerUrl)
             val podcastId = localItem?.parentItemId
-            val remote = if (podcastId == null) {
-                remoteEntries[local.itemId to null]
-            } else {
-                val response = scopedApi.getPodcastEpisodeProgress(podcastId, local.itemId)
-                when {
-                    response.isSuccessful -> response.body()
-                    response.code() == 404 -> null
-                    else -> {
-                        if (response.code() == 401 || response.code() == 403) {
-                            sessionRepository.recoverFromUnauthorized(activeServerUrl, activeServer.token)
-                        }
-                        throw HttpException(response)
-                    }
-                }
-            }
+            // `/api/me` already carries podcast-episode progress (keyed by podcast + episode), so
+            // no per-episode request is needed: one GET covers every local row.
+            val remote = remoteEntries[RemoteProgressKey.of(local.itemId, podcastId)]
             val remoteUpdatedAt = remote?.effectiveUpdatedAt ?: 0L
             val remotePositionMs = ((remote?.currentTime ?: 0.0) * 1000).toLong()
 
@@ -1120,6 +1165,16 @@ class ProgressSyncEngine @Inject constructor(
         }
         Result(pushed, pulled, conflicts)
     }
+}
+
+/**
+ * Key into `/api/me`'s `mediaProgress`, which Audiobookshelf indexes by `(libraryItemId,
+ * episodeId)`. A book is `(itemId, null)`; a podcast episode is stored locally under its own id
+ * with the podcast as parent, and appears remotely as `(podcastId, episodeId)`.
+ */
+internal object RemoteProgressKey {
+    fun of(localItemId: String, podcastId: String?): Pair<String, String?> =
+        if (podcastId == null) localItemId to null else podcastId to localItemId
 }
 
 internal object LibraryPageMath {
