@@ -922,10 +922,35 @@ data class NowPlayingUiState(
  * Each tick costs a binder round trip to the playback service plus a recomposition, so it must
  * only run while the position is genuinely on screen. Playback itself is owned by the service and
  * is unaffected by this gate.
+ *
+ * See [shouldTickWithInterval] for a version that returns the interval to use, allowing for
+ * adaptive power optimization based on screen state.
  */
 internal object PlaybackTicker {
     fun shouldTick(playing: Boolean, ambient: Boolean, playerScreenActive: Boolean): Boolean =
         playing && !ambient && playerScreenActive
+
+    /**
+     * Returns the interval (in ms) to use for the next tick, or 0 if no tick is needed.
+     * This allows for adaptive power optimization based on screen state.
+     *
+     * Intervals:
+     * - 1s when on screen: Most responsive, highest power
+     * - 2.5s when not on screen: Good balance, minimal visual lag
+     * - 5s in ambient mode: Lowest power, acceptable for ambient
+     * - 0: No tick needed
+     */
+    fun shouldTickWithInterval(
+        playing: Boolean,
+        ambient: Boolean,
+        playerScreenActive: Boolean,
+        onScreen: Boolean
+    ): Long = when {
+        playing && !ambient && onScreen -> 1_000L   // 1s on screen
+        playing && !ambient && !onScreen -> 2_500L  // 2.5s not on screen
+        playing && ambient -> 5_000L                // 5s in ambient
+        else -> 0L                                  // No tick
+    }
 }
 
 /**
@@ -1471,12 +1496,13 @@ class PlayerViewModel @Inject constructor(
                 ambient,
                 playerScreenActive
             ) { playing, isAmbient, screenActive ->
-                PlaybackTicker.shouldTick(playing, isAmbient, screenActive)
+                PlaybackTicker.shouldTickWithInterval(playing, isAmbient, screenActive, screenActive)
             }
-                .collectLatest { shouldTick ->
+                .collectLatest { tickResult ->
                     updatePosition()
-                    while (shouldTick) {
-                        delay(1_000)
+                    val interval = tickResult
+                    while (interval > 0) {
+                        delay(interval)
                         updatePosition()
                     }
                 }

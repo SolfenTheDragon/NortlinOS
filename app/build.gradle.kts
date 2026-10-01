@@ -92,10 +92,13 @@ dependencies {
     implementation("androidx.wear.compose:compose-material3:1.7.0")
     implementation("androidx.wear.compose:compose-foundation:1.7.0")
     implementation("androidx.wear.compose:compose-navigation:1.7.0")
-    implementation("androidx.wear:wear:1.3.0")
-    implementation("androidx.wear.tiles:tiles:1.6.2")
-    implementation("androidx.wear.protolayout:protolayout-material3:1.4.2")
-    implementation("androidx.wear:wear-input:1.2.0")
+    implementation("androidx.wear:wear:2.0.0")
+    implementation("androidx.wear.tiles:tiles:2.0.0")
+    implementation("androidx.wear.protolayout:protolayout-material3:2.0.0")
+    implementation("androidx.wear:wear-input:2.0.0")
+    // Media3's MediaSessionService provides lifecycle callbacks like onNotificationShown, onBind, etc.
+    // Enables power-efficient lifecycle callbacks for playback state changes
+    implementation("androidx.wear:wear:2.0.0")
     // Installs baseline-prof.txt on sideloaded / non-Play installs too.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Hands OAuth sign-in to the paired phone, the only path that works on browser-less watches.
