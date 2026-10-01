@@ -6,8 +6,6 @@ import com.nortlinos.wearos.tile.TileCover
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
-import android.os.WakeHint
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -72,14 +70,6 @@ class PlaybackService : MediaSessionService() {
     @UnstableApi
     override fun onCreate() {
         super.onCreate()
-        // Hints that we can sleep when the watch is idle; the CPU wake lock handles most of the
-        // work, and this is a nice-to-have hint for additional power saving when the watch is idle.
-        val wakeLock = PowerManager.WakeLock.PARTIAL_WAKE_LOCK
-        val idleHint = PowerManager.IdleHint.Builder(this)
-            .setWakeLock(wakeLock)
-            .setHint(WakeHint.ON_IDLE)
-            .build()
-        setIdleHint(idleHint)
         // Streams through the app-wide OkHttpClient so audio shares its connection pool with the
         // API calls that precede it (the play-session request goes to the same host). A separate
         // HTTP stack would pay a second TCP + TLS handshake, and keep the radio up longer, every
@@ -282,27 +272,6 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
-    override fun onNotificationShown(notificationId: Int?, notificationInfo: NotificationInfo?) {
-        // Notification shown: could gate tile updates or adjust behavior
-        // Future: gate tile updates or adjust behavior based on notification state
-    }
-
-    override fun onNotificationDismissed(notificationId: Int?, notificationInfo: NotificationInfo?) {
-        // Notification dismissed: could gate tile updates or adjust behavior
-        // Future: gate tile updates or adjust behavior based on notification state
-    }
-
-    override fun onBind(p0: Intent?, p1: MediaSession.ControllerInfo?) {
-        // Tile bind: user is actively using the app (tile tap)
-        // Could wake up the CPU if needed for a responsive UI update
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        // Tile unbind: user stopped interacting with the tile
-        // Future: consider hinting idle or adjusting behavior
-        return super.onUnbind(intent)
-    }
-
     override fun onDestroy() {
         tileCoverJob?.cancel()
         val snapshot = tileSnapshot(playing = false)
@@ -325,44 +294,6 @@ class PlaybackService : MediaSessionService() {
         }
         session = null
         super.onDestroy()
-    }
-
-    /**
-     * Wake from idle/suspend: restore ticker if needed
-     *
-     * Wear OS can suspend the CPU while keeping the service alive. When the device wakes from
-     * idle (user touched the watch, right-swiped back, left-swiped to playback tools, or the
-     * device wakes from Doze), we need to ensure the progress ticker is still active if
-     * playback is running.
-     */
-    override fun onWakeFromIdle() {
-        // Restore the progress ticker if playback is active
-        scope?.launch {
-            if (session?.player?.isPlaying == true) {
-                // The ticker flow should already be running from the initial play request,
-                // but we ensure it's active after waking from idle
-                if (progressJob?.isActive == false) {
-                    // Restart the progress ticker
-                    scope?.launch {
-                        // The ticker is started elsewhere, but we ensure it runs after wake
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onWakeFromSuspend() {
-        // Similar to onWakeFromIdle, but the device was in suspend mode
-        // (screen-off, no user interaction, possibly Doze-compatible)
-        scope?.launch {
-            if (session?.player?.isPlaying == true) {
-                if (progressJob?.isActive == false) {
-                    scope?.launch {
-                        // Ensure ticker runs after suspend wake
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -447,16 +378,9 @@ class PlaybackService : MediaSessionService() {
         const val EXTRA_TRACK_OFFSET_MS = "track_offset_ms"
         const val EXTRA_BOOK_DURATION_MS = "book_duration_ms"
 
-        private const val PROGRESS_TICK_MS = 15_000L
+        private const val PROGRESS_TICK_MS = 10_000L
         private const val MIN_BUFFER_MS = 60_000
-        /**
-         * Max buffer size in milliseconds. Controls how much ahead the player buffers audio.
-         * 
-         * Reduced from 180s to 120s (~33% less memory) to reduce RAM usage during long sessions.
-         * 120s provides a comfortable 2-minute audio buffer without excessive memory footprint.
-         * The player still handles most seeks from memory with 30s back buffer.
-         */
-        private const val MAX_BUFFER_MS = 120_000
+        private const val MAX_BUFFER_MS = 180_000
         private const val BUFFER_FOR_PLAYBACK_MS = 2_500
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
 
@@ -464,10 +388,8 @@ class PlaybackService : MediaSessionService() {
          * Kept comfortably above the player's 30-second rewind so the most common backward seek
          * resolves from memory. ExoPlayer's default back buffer is 0 ms, which makes every rewind
          * re-seek the source — a fresh network request while streaming.
-         *
-         * Reduced from 50s to 30s to save ~40% memory and ~25% seek latency.
          */
-        private const val BACK_BUFFER_MS = 30_000
+        private const val BACK_BUFFER_MS = 50_000
 
         /**
          * Audio offload lets the DSP decode the stream so the CPU can sleep between buffers, which
