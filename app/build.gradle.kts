@@ -93,9 +93,9 @@ dependencies {
     implementation("androidx.wear.compose:compose-foundation:1.7.0")
     implementation("androidx.wear.compose:compose-navigation:1.7.0")
     implementation("androidx.wear:wear:1.4.0")
-    implementation("androidx.wear.tiles:tiles:1.7.0")
+    implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout-material3:1.4.2")
-    implementation("androidx.wear:wear-input:1.4.0")
+    implementation("androidx.wear:wear-input:1.2.0")
     // Installs baseline-prof.txt on sideloaded / non-Play installs too.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Hands OAuth sign-in to the paired phone, the only path that works on browser-less watches.
