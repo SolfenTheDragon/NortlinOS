@@ -156,6 +156,9 @@ interface LibraryDao {
     @Query("SELECT * FROM libraries WHERE originServerUrl = :originServerUrl ORDER BY name COLLATE NOCASE")
     fun observeLibraries(originServerUrl: String): Flow<List<LibraryEntity>>
 
+    @Query("SELECT * FROM libraries WHERE originServerUrl = :originServerUrl ORDER BY name COLLATE NOCASE")
+    suspend fun getLibraries(originServerUrl: String): List<LibraryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLibraries(libraries: List<LibraryEntity>)
 

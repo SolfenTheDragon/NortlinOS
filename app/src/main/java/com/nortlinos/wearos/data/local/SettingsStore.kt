@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -17,6 +18,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 private val Context.settingsDataStore by preferencesDataStore("display_settings")
 
 enum class ProgressDisplayMode { CHAPTER, BOOK }
+
+enum class AccentTheme(val label: String) {
+    AMBER("Amber"), TEAL("Teal"), BLUE("Blue"), GREEN("Green"), PURPLE("Purple"), ROSE("Rose")
+}
 
 data class SavedLogin(
     val url: String,
@@ -142,5 +147,29 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setHomePodcastsVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homePodcastsKey] = visible }
+    }
+
+    private val accentThemeKey = stringPreferencesKey("accent_theme")
+    private val precacheKey = booleanPreferencesKey("precache_libraries")
+
+    /** Button accent color. Defaults to the original amber. */
+    val accentTheme: Flow<AccentTheme> = context.settingsDataStore.data.map { prefs ->
+        AccentTheme.entries.firstOrNull { it.name == prefs[accentThemeKey] } ?: AccentTheme.AMBER
+    }
+
+    suspend fun setAccentTheme(theme: AccentTheme) {
+        context.settingsDataStore.edit { it[accentThemeKey] = theme.name }
+    }
+
+    /**
+     * Loads library listings in the background right after connecting. Off by default because it
+     * spends radio time on libraries the user may never open.
+     */
+    val precacheLibraries: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[precacheKey] == true
+    }
+
+    suspend fun setPrecacheLibraries(enabled: Boolean) {
+        context.settingsDataStore.edit { it[precacheKey] = enabled }
     }
 }

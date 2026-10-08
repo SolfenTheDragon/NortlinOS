@@ -40,7 +40,13 @@ import com.nortlinos.wearos.service.ConnectivityMonitor
 import com.nortlinos.wearos.service.DownloadWorker
 import com.nortlinos.wearos.service.OidcAuthorizer
 import com.nortlinos.wearos.service.OidcAuthorizers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import com.nortlinos.wearos.data.local.SettingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -431,8 +437,12 @@ class LibraryRepository @Inject constructor(
     private val database: AppDatabase,
     private val libraryDao: LibraryDao,
     private val sessionRepository: SessionRepository,
-    private val connectivityMonitor: ConnectivityMonitor
+    private val connectivityMonitor: ConnectivityMonitor,
+    private val settingsStore: SettingsStore
 ) {
+    private val precacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var precacheJob: Job? = null
+
     data class Page(
         val items: List<LibraryItemEntity>,
         val page: Int,
@@ -466,6 +476,29 @@ class LibraryRepository @Inject constructor(
         libraryDao.upsertLibraries(response.body().requireBody().libraries.map {
             LibraryEntity(it.id, origin, it.name, it.mediaType)
         })
+        precacheIfEnabled()
+    }
+
+    /**
+     * Background warm-up of every library's first pages so lists are already in Room while the
+     * user navigates. No-op unless the setting is enabled; a run in progress is not restarted.
+     */
+    @Synchronized
+    fun precacheIfEnabled() {
+        if (precacheJob?.isActive == true) return
+        precacheJob = precacheScope.launch {
+            if (!settingsStore.precacheLibraries.first()) return@launch
+            val server = sessionRepository.session.value ?: return@launch
+            val libraries = libraryDao.getLibraries(ServerIdentity.normalize(server.url))
+            for (library in libraries) {
+                for (page in 0 until PRECACHE_MAX_PAGES) {
+                    val result = loadPage(
+                        library.id, page, PAGE_SIZE, expectedOriginServerUrl = server.url
+                    ).getOrNull() ?: return@launch
+                    if (!result.hasMore) break
+                }
+            }
+        }
     }
 
     suspend fun loadPage(
@@ -723,6 +756,7 @@ class LibraryRepository @Inject constructor(
     companion object {
         const val PAGE_SIZE = 40
         const val SEARCH_LIMIT = 50
+        private const val PRECACHE_MAX_PAGES = 5
         private const val SQLITE_VARIABLE_CHUNK = 500
     }
 }

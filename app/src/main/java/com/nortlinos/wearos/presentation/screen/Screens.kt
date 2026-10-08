@@ -148,6 +148,7 @@ import com.nortlinos.wearos.presentation.viewmodel.LibrarySeriesSearch
 import com.nortlinos.wearos.presentation.viewmodel.LoginViewModel
 import com.nortlinos.wearos.presentation.viewmodel.PlaybackSpeedFormat
 import com.nortlinos.wearos.presentation.viewmodel.PlayerViewModel
+import com.nortlinos.wearos.data.local.AccentTheme
 import com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel
 import com.nortlinos.wearos.service.SleepTimerState
 import com.nortlinos.wearos.service.SleepTimerMath
@@ -2327,8 +2328,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val seriesView by viewModel.seriesView.collectAsStateWithLifecycle()
     val searchVisible by viewModel.homeSearchVisible.collectAsStateWithLifecycle()
     val podcastsVisible by viewModel.homePodcastsVisible.collectAsStateWithLifecycle()
+    val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
+    val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Settings") }
+        item { SupportingText("Button color") }
+        items(AccentTheme.entries) { theme ->
+            ChoiceChip(
+                label = theme.label,
+                selected = accent == theme,
+                onClick = { viewModel.setAccentTheme(theme) }
+            )
+        }
         item { SupportingText("Downloads") }
         item {
             SupportingText(
@@ -2350,6 +2361,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 description = "Open libraries grouped into series. Loads the whole library, so it uses more battery than the book list.",
                 checked = seriesView,
                 onCheckedChange = viewModel::setSeriesView
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Pre-cache libraries",
+                description = "After connecting, load library listings in the background so they are ready as you browse. Uses more battery and data.",
+                checked = precache,
+                onCheckedChange = viewModel::setPrecacheLibraries
             )
         }
         item {

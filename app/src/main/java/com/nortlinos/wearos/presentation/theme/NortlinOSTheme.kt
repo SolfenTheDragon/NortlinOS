@@ -1,16 +1,18 @@
 package com.nortlinos.wearos.presentation.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.MaterialTheme
+import com.nortlinos.wearos.data.local.AccentTheme
 
 /**
  * Amber-and-teal scheme on a pure black background. Wear OS screens are OLED, so black is free
  * and every lit container costs power; containers stay dark and saturated colors are reserved for
  * the primary action and state accents.
  */
-private val NortlinOSColorScheme = ColorScheme(
+private val BaseColorScheme = ColorScheme(
     primary = Color(0xFFF4A340),
     primaryDim = Color(0xFFC87616),
     primaryContainer = Color(0xFF5A3A0E),
@@ -42,14 +44,33 @@ private val NortlinOSColorScheme = ColorScheme(
     onErrorContainer = Color(0xFFFFDAD5)
 )
 
+private class Accent(
+    val primary: Long, val dim: Long, val container: Long, val onContainer: Long
+)
+
+private fun AccentTheme.accent() = when (this) {
+    AccentTheme.AMBER -> Accent(0xFFF4A340, 0xFFC87616, 0xFF5A3A0E, 0xFFFFDDB5)
+    AccentTheme.TEAL -> Accent(0xFF65D6C4, 0xFF279889, 0xFF1F3B37, 0xFFCDEFE9)
+    AccentTheme.BLUE -> Accent(0xFF8AB4F8, 0xFF5B86CC, 0xFF1F3354, 0xFFD6E4FF)
+    AccentTheme.GREEN -> Accent(0xFF7FD67F, 0xFF4BA04B, 0xFF1F3F1F, 0xFFD2F2D2)
+    AccentTheme.PURPLE -> Accent(0xFFC9A0F5, 0xFF9A6CC8, 0xFF3D2B54, 0xFFEBDAFF)
+    AccentTheme.ROSE -> Accent(0xFFF58FB0, 0xFFC85F82, 0xFF54243A, 0xFFFFD8E6)
+}
+
 /**
  * App-wide Wear Material 3 theme wrapper. Wrap the app's root composable in this so every
  * screen shares consistent colors, typography, and shapes.
  */
 @Composable
-fun NortlinOSTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = NortlinOSColorScheme,
-        content = content
-    )
+fun NortlinOSTheme(accent: AccentTheme = AccentTheme.AMBER, content: @Composable () -> Unit) {
+    val scheme = remember(accent) {
+        val a = accent.accent()
+        BaseColorScheme.copy(
+            primary = Color(a.primary),
+            primaryDim = Color(a.dim),
+            primaryContainer = Color(a.container),
+            onPrimaryContainer = Color(a.onContainer)
+        )
+    }
+    MaterialTheme(colorScheme = scheme, content = content)
 }

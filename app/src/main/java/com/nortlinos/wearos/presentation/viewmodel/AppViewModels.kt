@@ -17,6 +17,7 @@ import com.nortlinos.wearos.data.local.DownloadedBookData
 import com.nortlinos.wearos.data.local.LibraryEntity
 import com.nortlinos.wearos.data.local.LibraryItemEntity
 import com.nortlinos.wearos.data.local.ProgressDisplayMode
+import com.nortlinos.wearos.data.local.AccentTheme
 import com.nortlinos.wearos.data.local.SettingsStore
 import com.nortlinos.wearos.data.api.AudioBookmarkDto
 import com.nortlinos.wearos.data.repository.BookmarkRepository
@@ -1639,6 +1640,7 @@ data class OutputPrompt(val speakerAvailable: Boolean)
 class SettingsViewModel @Inject constructor(
     val settingsStore: SettingsStore,
     private val sessionRepository: SessionRepository,
+    private val libraryRepository: LibraryRepository,
     downloadRepository: DownloadRepository
 ) : ViewModel() {
     val mode = settingsStore.progressDisplayMode
@@ -1661,6 +1663,18 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val homePodcastsVisible = settingsStore.homePodcastsVisible
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val accentTheme = settingsStore.accentTheme
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.AMBER)
+    val precacheLibraries = settingsStore.precacheLibraries
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setAccentTheme(theme: AccentTheme) =
+        viewModelScope.launch { settingsStore.setAccentTheme(theme) }
+
+    fun setPrecacheLibraries(enabled: Boolean) = viewModelScope.launch {
+        settingsStore.setPrecacheLibraries(enabled)
+        if (enabled) libraryRepository.precacheIfEnabled()
+    }
 
     fun setSeriesView(enabled: Boolean) =
         viewModelScope.launch { settingsStore.setLibrarySeriesView(enabled) }

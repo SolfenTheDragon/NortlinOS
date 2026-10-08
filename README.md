@@ -54,7 +54,9 @@ phone at home, and pick up exactly where you left off on any device.
 - **See the cover in the watch's media controls**, so you can pause from anywhere.
 - **Show progress for the whole book or the current chapter** (Settings).
 - **Tailor the app to how you listen** (Settings): **Show series** opens libraries in the Series
-  view every time, and **Search on main menu** hides the Search entry if you never use it.
+  view every time, and **Search on main menu** hides the Search entry if you never use it. **Button color** picks the accent color, and
+  **Pre-cache libraries** (off by default) loads library listings in the background after you
+  connect, at the cost of extra battery and data.
 - **Keep listening after signing out.** *Listen offline* on the sign-in screen opens your
   downloads without an account.
 
