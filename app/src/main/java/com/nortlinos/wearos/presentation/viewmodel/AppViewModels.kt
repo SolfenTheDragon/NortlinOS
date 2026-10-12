@@ -963,28 +963,37 @@ internal object PlaybackTicker {
 }
 
 /**
- * The fixed playback-speed presets offered in the player's options menu, plus the pure
- * string-formatting used to label them.
+ * Playback-speed stepping bounds plus the pure string-formatting and clamping used by the
+ * player's options menu.
  */
 internal object PlaybackSpeedFormat {
-    val PRESETS = listOf(1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 2.0f, 3.0f)
+    const val MIN = 0.5f
+    const val MAX = 3.0f
+    const val DEFAULT = 1.0f
+    private const val STEP_TENTHS = 1
+
+    private fun tenths(speed: Float): Int = Math.round(speed * 10)
 
     /** Trims a trailing ".0" so whole-number speeds read as "2x" rather than "2.0x". */
     fun label(speed: Float): String {
-        val rounded = (speed * 10).toInt() / 10f
-        return if (rounded == rounded.toInt().toFloat()) {
-            rounded.toInt().toString()
-        } else {
-            rounded.toString()
-        }
+        val t = tenths(speed)
+        return if (t % 10 == 0) (t / 10).toString() else "${t / 10}.${t % 10}"
     }
 
+    /** Moves [speed] by [steps] tenths, staying within [MIN]..[MAX]. */
+    fun step(speed: Float, steps: Int): Float = sanitize(
+        (tenths(speed) + steps * STEP_TENTHS).coerceIn(tenths(MIN), tenths(MAX)) / 10f
+    )
+
     /**
-     * Falls back to 1.0x for anything outside [PRESETS]. Guards against a stored preference from
-     * an older/newer build whose preset list differed, or any other corrupted value, ever reaching
-     * the player as an unsupported speed.
+     * Snaps to one decimal place and falls back to 1.0x for non-finite or out-of-range values,
+     * so a corrupted stored preference can never reach the player as an unsupported speed.
      */
-    fun sanitize(speed: Float): Float = if (speed in PRESETS) speed else 1.0f
+    fun sanitize(speed: Float): Float {
+        if (!speed.isFinite()) return DEFAULT
+        val t = tenths(speed)
+        return if (t in tenths(MIN)..tenths(MAX)) t / 10f else DEFAULT
+    }
 }
 
 /** Formats the auto-generated title given to a bookmark created from the current position. */

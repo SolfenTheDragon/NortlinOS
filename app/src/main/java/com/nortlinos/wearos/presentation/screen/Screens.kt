@@ -61,6 +61,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -2135,14 +2137,35 @@ private fun PlaybackToolsPage(
             item(key = "speed-status") {
                 SupportingText("Playback speed \u00b7 ${PlaybackSpeedFormat.label(playbackSpeed)}x")
             }
-            PlaybackSpeedFormat.PRESETS.forEach { speed ->
-                item(key = "speed-$speed") {
-                    ChoiceChip(
-                        label = "${PlaybackSpeedFormat.label(speed)}x",
-                        selected = speed == playbackSpeed,
-                        onClick = { onSetPlaybackSpeed(speed) }
-                    )
+            item(key = "speed-adjust") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledIconButton(
+                        onClick = { onSetPlaybackSpeed(PlaybackSpeedFormat.step(playbackSpeed, -1)) },
+                        enabled = playbackSpeed > PlaybackSpeedFormat.MIN
+                    ) {
+                        Text("\u2212", modifier = Modifier.semantics { contentDescription = "Slower" })
+                    }
+                    Text("${PlaybackSpeedFormat.label(playbackSpeed)}x")
+                    FilledIconButton(
+                        onClick = { onSetPlaybackSpeed(PlaybackSpeedFormat.step(playbackSpeed, 1)) },
+                        enabled = playbackSpeed < PlaybackSpeedFormat.MAX
+                    ) {
+                        Text("+", modifier = Modifier.semantics { contentDescription = "Faster" })
+                    }
                 }
+            }
+            item(key = "speed-reset") {
+                WearChip(
+                    onClick = { onSetPlaybackSpeed(PlaybackSpeedFormat.DEFAULT) },
+                    label = { Text("Reset speed to 1.0x") },
+                    style = ChipStyle.SECONDARY,
+                    enabled = playbackSpeed != PlaybackSpeedFormat.DEFAULT,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             if (showBookmarks) {
                 item(key = "bookmark-status") {
