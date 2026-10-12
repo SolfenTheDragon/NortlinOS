@@ -164,4 +164,10 @@ jobs:
             NortlinOS-${{ steps.version.outputs.name }}-insecure.apk
             ${{ env.HAS_KEYSTORE == 'true' && format('NortlinOS-{0}.aab', steps.version.outputs.name) || '' }}
           body: |
+            ### Which APK should I install?
+            - **`NortlinOS-${{ steps.version.outputs.name }}.apk`** – HTTPS only. Requires a server address starting with `https://` and a certificate trusted by the watch.
+            - **`NortlinOS-${{ steps.version.outputs.name }}-insecure.apk`** – also accepts plain `http://` servers and self-signed certificates. Traffic is not protected against interception, so use it only on networks you trust.
+
+            Both builds share the same app ID and signature, so only one can be installed at a time. Switching between them keeps your data (install over the top with `adb install -r`).
+
             ${{ steps.keystore.outputs.path == '' && '> ⚠️ Built without a signing secret configured, so this APK is **unsigned**. No Play upload bundle was produced. Configure the `RELEASE_KEYSTORE_BASE64`/`RELEASE_KEYSTORE_PASSWORD`/`RELEASE_KEY_ALIAS`/`RELEASE_KEY_PASSWORD` repository secrets to publish a signed APK and Play-ready AAB.' || '' }}
