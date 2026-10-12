@@ -2,6 +2,7 @@ package com.nortlinos.wearos.presentation.navigation
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -16,6 +17,7 @@ import com.nortlinos.wearos.presentation.screen.DownloadedScreen
 import com.nortlinos.wearos.presentation.screen.EpisodeDetailScreen
 import com.nortlinos.wearos.presentation.screen.HomeScreen
 import com.nortlinos.wearos.presentation.screen.LibraryItemsScreen
+import com.nortlinos.wearos.presentation.screen.LocalFormatDescriptions
 import com.nortlinos.wearos.presentation.screen.LibraryScreen
 import com.nortlinos.wearos.presentation.screen.LoginScreen
 import com.nortlinos.wearos.presentation.screen.PlayerScreen
@@ -76,6 +78,8 @@ fun AppNavHost(
         onTileLaunchHandled()
     }
 
+    val formatDescriptions by settingsViewModel.formatDescriptions.collectAsStateWithLifecycle()
+    CompositionLocalProvider(LocalFormatDescriptions provides formatDescriptions) {
     SwipeDismissableNavHost(
         navController = nav,
         startDestination = if (session == null) Routes.LOGIN else Routes.HOME
@@ -203,5 +207,6 @@ fun AppNavHost(
         composable(Routes.SETTINGS) {
             SettingsScreen(settingsViewModel)
         }
+    }
     }
 }

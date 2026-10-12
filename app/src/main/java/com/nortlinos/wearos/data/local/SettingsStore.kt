@@ -101,6 +101,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val seriesViewKey = booleanPreferencesKey("library_series_view")
     private val homeSearchKey = booleanPreferencesKey("home_search_visible")
     private val homePodcastsKey = booleanPreferencesKey("home_podcasts_visible")
+    private val formatDescriptionsKey = booleanPreferencesKey("format_html_descriptions")
 
     val progressDisplayMode: Flow<ProgressDisplayMode> = context.settingsDataStore.data.map {
         if (it[chapterMode] == true) ProgressDisplayMode.CHAPTER else ProgressDisplayMode.BOOK
@@ -138,6 +139,15 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setHomeSearchVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homeSearchKey] = visible }
+    }
+
+    /** Renders HTML markup in book/podcast descriptions as formatted text. Defaults to on. */
+    val formatDescriptions: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[formatDescriptionsKey] ?: true
+    }
+
+    suspend fun setFormatDescriptions(enabled: Boolean) {
+        context.settingsDataStore.edit { it[formatDescriptionsKey] = enabled }
     }
 
     /** Shows the Podcasts entry on the main menu. Defaults to on. */

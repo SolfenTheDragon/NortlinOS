@@ -69,6 +69,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -973,7 +974,7 @@ fun BookDetailScreen(
         if (isPodcast) {
             item {
                 Text(
-                    text = item?.description ?: "No description cached.",
+                    text = descriptionText(item?.description),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
@@ -1176,7 +1177,7 @@ fun BookDetailScreen(
                     item == null && refreshingItemId == itemId ->
                         CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp))
                     else -> Text(
-                        text = item?.description ?: "No description cached.",
+                        text = descriptionText(item?.description),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
@@ -1288,7 +1289,7 @@ fun EpisodeDetailScreen(
         }
         item {
             Text(
-                text = episode?.description ?: "No description cached.",
+                text = descriptionText(episode?.description),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
@@ -2387,6 +2388,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val podcastsVisible by viewModel.homePodcastsVisible.collectAsStateWithLifecycle()
     val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
     val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
+    val formatDescriptions by viewModel.formatDescriptions.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Settings") }
         item { PrivacyPolicyChip() }
@@ -2427,6 +2429,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 description = "After connecting, load library listings in the background so they are ready as you browse. Uses more battery and data.",
                 checked = precache,
                 onCheckedChange = viewModel::setPrecacheLibraries
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Format descriptions",
+                description = "Show HTML in book and podcast descriptions as formatted text instead of raw tags.",
+                checked = formatDescriptions,
+                onCheckedChange = viewModel::setFormatDescriptions
             )
         }
         item {
@@ -2933,6 +2943,16 @@ private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
         transformation = transform?.surface,
         label = { Text(label) }
     )
+}
+
+/** Formats [raw] as HTML unless the user turned description formatting off in Settings. */
+@Composable
+private fun descriptionText(raw: String?): AnnotatedString {
+    val text = raw ?: "No description cached."
+    val format = LocalFormatDescriptions.current
+    return remember(text, format) {
+        if (format) HtmlText.toAnnotated(text) else AnnotatedString(text)
+    }
 }
 
 @Composable

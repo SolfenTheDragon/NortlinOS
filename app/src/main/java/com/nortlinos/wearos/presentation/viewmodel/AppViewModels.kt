@@ -1680,6 +1680,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val homePodcastsVisible = settingsStore.homePodcastsVisible
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val formatDescriptions = settingsStore.formatDescriptions
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val accentTheme = settingsStore.accentTheme
         .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.AMBER)
     val precacheLibraries = settingsStore.precacheLibraries
@@ -1698,6 +1700,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setHomeSearchVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomeSearchVisible(visible) }
+
+    fun setFormatDescriptions(enabled: Boolean) =
+        viewModelScope.launch { settingsStore.setFormatDescriptions(enabled) }
 
     fun setHomePodcastsVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomePodcastsVisible(visible) }

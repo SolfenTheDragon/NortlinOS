@@ -45,6 +45,7 @@ phone at home, and pick up exactly where you left off on any device.
   - previous/next chapter, or All chapters to jump straight to any chapter;
   - a sleep timer (any length up to 12 hours);
   - playback speed;
+  - format descriptions (render HTML in book/podcast descriptions);
   - **Bookmark this spot** to save the current position (books only), then **View bookmarks** to
     jump back to any saved spot or hold one to remove it.
 - **Keep your place everywhere.** Book and podcast episode progress syncs with your server
