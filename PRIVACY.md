@@ -35,6 +35,9 @@ Server traffic requires HTTPS and the app validates the server's TLS certificate
 normal trust checks. Addresses using HTTP are rejected; private self-hosted servers need a valid
 HTTPS configuration to sign in, stream, sync, or download.
 
+This describes released builds. Developer builds compiled with `nortlinos.allowInsecureServers=true`
+accept HTTP and untrusted certificates and are not intended for distribution.
+
 ## Retention and deletion
 
 Use **Log out** to remove the saved server session and password login from the watch. This does

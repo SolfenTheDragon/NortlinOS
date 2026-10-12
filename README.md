@@ -143,6 +143,9 @@ To update, repeat step 3 with the new file. `-r` keeps your sign-in, downloads a
    NortlinOS adds it. HTTP addresses are not accepted because they would send your password and
    session over an unencrypted connection. Your server must have a certificate trusted by the
    watch; self-signed or otherwise untrusted certificates are rejected.
+   *Development builds* (`nortlinos.allowInsecureServers=true` in `gradle.properties`, the
+   default in this repo) also accept `http://` addresses and self-signed certificates, with no
+   protection against interception. Set it to `false` for release/Play Store builds.
 2. Enter your **username and password** and tap **Sign in**.
 
 **Single sign-on (SSO):** if your server has OpenID Connect enabled, a sign-in button for it
