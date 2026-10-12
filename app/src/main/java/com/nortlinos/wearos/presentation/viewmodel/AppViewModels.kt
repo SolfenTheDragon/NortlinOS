@@ -171,7 +171,15 @@ class LoginViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val libraryRepository: LibraryRepository
 ) : ViewModel() {
-    private val _state = MutableStateFlow(LoginUiState())
+    private val _state = MutableStateFlow(
+        LoginUiState(
+            error = if (sessionRepository.discardedInsecureCredentials) {
+                "The saved server used HTTP. Re-enter your server with HTTPS to sign in securely."
+            } else {
+                null
+            }
+        )
+    )
     val state = _state.asStateFlow()
 
     private var probeJob: Job? = null

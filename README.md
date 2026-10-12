@@ -138,8 +138,11 @@ To update, repeat step 3 with the new file. `-r` keeps your sign-in, downloads a
   <img src="resources/Main%20Menu.png" alt="NortlinOS sign-in form" width="220" />
 </p>
 
-1. Open NortlinOS and enter your **server address**, e.g. `https://abs.example.com` or
-   `192.168.1.20:13378`. If you leave out `https://`, NortlinOS tries a secure connection first.
+1. Open NortlinOS and enter your **HTTPS server address**, e.g.
+   `https://abs.example.com` or `https://audiobooks.example.net`. If you leave out `https://`,
+   NortlinOS adds it. HTTP addresses are not accepted because they would send your password and
+   session over an unencrypted connection. Your server must have a certificate trusted by the
+   watch; self-signed or otherwise untrusted certificates are rejected.
 2. Enter your **username and password** and tap **Sign in**.
 
 **Single sign-on (SSO):** if your server has OpenID Connect enabled, a sign-in button for it
@@ -218,9 +221,12 @@ Improvements being worked on:
 
 ## Privacy
 
-NortlinOS talks only to the Audiobookshelf server you sign in to. Your session and (for password
-sign-in) your credentials are stored encrypted on the watch and are never included in backups.
-There are no ads, analytics, or third-party services.
+Read the [NortlinOS Privacy Policy](PRIVACY.md). It is also available from the sign-in screen and
+Settings in the app. In short, NortlinOS sends your sign-in and library/playback requests only to
+the HTTPS Audiobookshelf server you choose; it has no advertising, analytics, or crash-reporting
+service. The privacy policy URL for the Play Store listing is:
+
+<https://github.com/SolfenTheDragon/NortlinOS/blob/main/PRIVACY.md>
 
 ## License
 

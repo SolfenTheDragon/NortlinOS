@@ -62,13 +62,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.File
 import java.io.IOException
-import java.net.ConnectException
-import java.net.NoRouteToHostException
-import java.net.UnknownHostException
 import java.security.MessageDigest
-import javax.net.ssl.SSLException
-import javax.net.ssl.SSLHandshakeException
-import javax.net.ssl.SSLPeerUnverifiedException
 import javax.inject.Inject
 import javax.inject.Singleton
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -90,8 +84,25 @@ class SessionRepository @Inject constructor(
     private val authorizers: OidcAuthorizers,
     private val connectivityMonitor: ConnectivityMonitor
 ) {
-    private val _session = MutableStateFlow(sessionStore.get())
+    private val restoredSession = sessionStore.get()
+    private val insecureSavedLogin = sessionStore.getLogin()?.let {
+        !SecureServerUrl.isHttps(it.url)
+    } == true
+    val discardedInsecureCredentials =
+        (restoredSession != null && !SecureServerUrl.isHttps(restoredSession.url)) ||
+            insecureSavedLogin
+    private val _session = MutableStateFlow(
+        restoredSession?.takeIf { SecureServerUrl.isHttps(it.url) }
+    )
     val session = _session.asStateFlow()
+
+    init {
+        if (restoredSession != null && _session.value == null) {
+            sessionStore.clear()
+        } else if (insecureSavedLogin) {
+            sessionStore.clearLogin()
+        }
+    }
 
     /** Serializes token refreshes, which cannot safely overlap. */
     private val refreshLock = Mutex()
@@ -99,36 +110,32 @@ class SessionRepository @Inject constructor(
 
     suspend fun login(serverUrl: String, username: String, password: String): Result<Server> =
         withContext(Dispatchers.IO) {
-            val cleanUrl = serverUrl.trim().trimEnd('/')
-            if (cleanUrl.isBlank()) return@withContext Result.failure(IOException("Server URL is required"))
-            if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
-            var lastFailure: Throwable = IOException("Unable to connect")
-            for (url in candidateUrls(cleanUrl)) {
-                try {
-                    val response = apiClient.scopedApi(url, null)
-                        .login(LoginRequest(username.trim(), password))
-                    val user = response.body()?.user
-                    if (response.isSuccessful && user != null && user.bearerToken.isNotBlank()) {
-                        sessionStore.saveLogin(url, username.trim(), password)
-                        return@withContext Result.success(
-                            adopt(Server(url, user.bearerToken, user.id, user.username, user.refreshToken))
-                        )
-                    }
-                    // The server answered, so the URL is right; trying the same host over
-                    // cleartext would only downgrade the connection without changing the result.
-                    return@withContext Result.failure(
-                        if (response.code() == 401 || response.code() == 403) {
-                            AuthenticationFailureException(response.code())
-                        } else {
-                            IOException("Login failed: HTTP ${response.code()}")
-                        }
-                    )
-                } catch (error: Exception) {
-                    lastFailure = error
-                    if (!isWorthRetryingOverCleartext(error)) break
-                }
+            val secureUrl = try {
+                SecureServerUrl.normalize(serverUrl)
+            } catch (error: IllegalArgumentException) {
+                return@withContext Result.failure(error)
             }
-            Result.failure(lastFailure)
+            if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
+            try {
+                val response = apiClient.scopedApi(secureUrl, null)
+                    .login(LoginRequest(username.trim(), password))
+                val user = response.body()?.user
+                if (response.isSuccessful && user != null && user.bearerToken.isNotBlank()) {
+                    sessionStore.saveLogin(secureUrl, username.trim(), password)
+                    return@withContext Result.success(
+                        adopt(Server(secureUrl, user.bearerToken, user.id, user.username, user.refreshToken))
+                    )
+                }
+                Result.failure(
+                    if (response.code() == 401 || response.code() == 403) {
+                        AuthenticationFailureException(response.code())
+                    } else {
+                        IOException("Login failed: HTTP ${response.code()}")
+                    }
+                )
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
         }
 
     /** What a server advertises on its public `/status` endpoint, plus the URL that answered. */
@@ -143,24 +150,20 @@ class SessionRepository @Inject constructor(
      * it actually works. Failures are non-fatal: the password form stays usable regardless.
      */
     suspend fun discoverAuthOptions(serverUrl: String): AuthOptions? = withContext(Dispatchers.IO) {
-        val cleanUrl = serverUrl.trim().trimEnd('/')
-        if (cleanUrl.isBlank() || !connectivityMonitor.hasActiveNetwork()) return@withContext null
-        for (url in candidateUrls(cleanUrl)) {
-            val response = try {
-                apiClient.newAuthSession(url).serverStatus()
-            } catch (error: Exception) {
-                if (isWorthRetryingOverCleartext(error)) continue else return@withContext null
-            }
-            // The host answered, so it is the right one; a non-2xx here means this is not an
-            // Audiobookshelf server rather than a reason to retry it over cleartext.
-            val status = response.takeIf { it.isSuccessful }?.body() ?: return@withContext null
-            return@withContext AuthOptions(
-                serverUrl = url,
-                openIdEnabled = OidcFlow.supportsOpenId(status),
-                openIdButtonText = OidcFlow.buttonText(status)
-            )
+        val secureUrl = runCatching { SecureServerUrl.normalize(serverUrl) }.getOrNull()
+            ?: return@withContext null
+        if (!connectivityMonitor.hasActiveNetwork()) return@withContext null
+        val response = try {
+            apiClient.newAuthSession(secureUrl).serverStatus()
+        } catch (_: Exception) {
+            return@withContext null
         }
-        null
+        val status = response.takeIf { it.isSuccessful }?.body() ?: return@withContext null
+        AuthOptions(
+            serverUrl = secureUrl,
+            openIdEnabled = OidcFlow.supportsOpenId(status),
+            openIdButtonText = OidcFlow.buttonText(status)
+        )
     }
 
     /**
@@ -172,9 +175,12 @@ class SessionRepository @Inject constructor(
      * rather than to fail the sign-in.
      */
     suspend fun loginWithOpenId(serverUrl: String): Result<Server> = withContext(Dispatchers.IO) {
-        val cleanUrl = serverUrl.trim().trimEnd('/')
-        if (cleanUrl.isBlank()) return@withContext Result.failure(IOException("Server URL is required"))
-        val resolvedUrl = discoverAuthOptions(cleanUrl)?.takeIf { it.openIdEnabled }?.serverUrl
+        val secureUrl = try {
+            SecureServerUrl.normalize(serverUrl)
+        } catch (error: IllegalArgumentException) {
+            return@withContext Result.failure(error)
+        }
+        val resolvedUrl = discoverAuthOptions(secureUrl)?.takeIf { it.openIdEnabled }?.serverUrl
             ?: return@withContext Result.failure(
                 IOException("This server does not offer single sign-on")
             )
@@ -400,34 +406,6 @@ class SessionRepository @Inject constructor(
 
     fun requireServer(): Server =
         _session.value ?: throw IOException("No Audiobookshelf server is configured")
-
-    private fun candidateUrls(input: String): List<String> =
-        if (input.startsWith("http://", true) || input.startsWith("https://", true)) {
-            listOf(input)
-        } else {
-            listOf("https://$input", "http://$input")
-        }
-
-    /**
-     * Whether an HTTPS failure justifies retrying the same host over cleartext.
-     *
-     * Self-hosted servers are routinely plain HTTP, so a URL typed without a scheme has to be able
-     * to fall back. What must not fall back is a host that answered over TLS and failed to prove
-     * its identity, or one whose failure is ambiguous about how far the request got: downgrading
-     * either would put credentials and session tokens on the wire in the clear.
-     */
-    private fun isWorthRetryingOverCleartext(error: Throwable): Boolean = when (error) {
-        // The host proved it speaks TLS but could not be trusted. Retrying in the clear would send
-        // credentials to exactly the host whose identity could not be verified.
-        is SSLPeerUnverifiedException, is SSLHandshakeException -> false
-        // The host is not speaking TLS at all, which is the self-hosted HTTP case this exists for.
-        is SSLException -> true
-        // Never reached, so nothing was sent and nothing can have leaked.
-        is ConnectException, is UnknownHostException, is NoRouteToHostException -> true
-        // Anything else, a read timeout above all, is ambiguous: the request may already have been
-        // sent over TLS, so the safe answer is to report the failure rather than downgrade.
-        else -> false
-    }
 
 }
 

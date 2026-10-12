@@ -12,6 +12,7 @@ import androidx.wear.ambient.AmbientLifecycleObserver
 import androidx.wear.compose.material3.AppScaffold
 import com.nortlinos.wearos.data.local.AccentTheme
 import com.nortlinos.wearos.data.local.SettingsStore
+import com.nortlinos.wearos.presentation.ProvideDownloadNotificationPermission
 import com.nortlinos.wearos.presentation.navigation.AppNavHost
 import com.nortlinos.wearos.presentation.theme.NortlinOSTheme
 import com.nortlinos.wearos.service.OidcRedirectBus
@@ -50,12 +51,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val accent by settingsStore.accentTheme.collectAsState(AccentTheme.AMBER)
             NortlinOSTheme(accent) {
-                AppScaffold {
-                    AppNavHost(
-                        isAmbient = isAmbient,
-                        tileLaunch = tileLaunch,
-                        onTileLaunchHandled = { tileLaunch = null }
-                    )
+                ProvideDownloadNotificationPermission {
+                    AppScaffold {
+                        AppNavHost(
+                            isAmbient = isAmbient,
+                            tileLaunch = tileLaunch,
+                            onTileLaunchHandled = { tileLaunch = null }
+                        )
+                    }
                 }
             }
         }

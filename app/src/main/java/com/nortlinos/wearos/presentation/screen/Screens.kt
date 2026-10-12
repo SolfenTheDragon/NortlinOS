@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -150,6 +151,7 @@ import com.nortlinos.wearos.presentation.viewmodel.PlaybackSpeedFormat
 import com.nortlinos.wearos.presentation.viewmodel.PlayerViewModel
 import com.nortlinos.wearos.data.local.AccentTheme
 import com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel
+import com.nortlinos.wearos.presentation.LocalRequestDownloadNotificationPermission
 import com.nortlinos.wearos.service.SleepTimerState
 import com.nortlinos.wearos.service.SleepTimerMath
 import com.nortlinos.wearos.data.api.ApiClient
@@ -233,6 +235,7 @@ fun LoginScreen(
                 )
             }
         }
+        item { PrivacyPolicyChip() }
     }
 }
 
@@ -320,6 +323,7 @@ fun RecentPlaybackScreen(
     libraryViewModel: LibraryViewModel,
     onItem: (String, String) -> Unit
 ) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     val recent by libraryViewModel.recentPlayback.collectAsStateWithLifecycle()
     val online by libraryViewModel.online.collectAsStateWithLifecycle()
     val server by libraryViewModel.activeSession.collectAsStateWithLifecycle()
@@ -371,6 +375,7 @@ fun RecentPlaybackScreen(
                     onClick = { onItem(book.itemId, book.originServerUrl) },
                     onLongClick = downloadLongPressAction(
                         status = if (book.downloaded) DownloadStatus.DOWNLOADED else null,
+                        requestNotificationPermission = requestNotificationPermission,
                         onStart = { libraryViewModel.startDownload(book.itemId) },
                         onPause = {}
                     )
@@ -435,6 +440,7 @@ fun LibraryItemsScreen(
     playerViewModel: PlayerViewModel,
     settingsViewModel: SettingsViewModel
 ) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     val seriesViewDefault by settingsViewModel.seriesView.collectAsStateWithLifecycle()
     val libraries by viewModel.libraries.collectAsStateWithLifecycle()
     val isPodcastLibrary = libraries.firstOrNull {
@@ -570,6 +576,7 @@ fun LibraryItemsScreen(
                     // only offer long-press download for actual books.
                     onLongClick = if (isPodcastLibrary) null else downloadLongPressAction(
                         status = statuses[book.id to book.originServerUrl],
+                        requestNotificationPermission = requestNotificationPermission,
                         onStart = { viewModel.startDownload(book.id) },
                         onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
                     )
@@ -714,12 +721,14 @@ fun LibraryItemsScreen(
                 if (activeSeries.loaded) {
                     WearChip(
                         onClick = {
-                            viewModel.downloadSeries(
-                                libraryId,
-                                selectedSeries.name,
-                                selectedSeries.books.map { it.id },
-                                originServerUrl
-                            )
+                            requestNotificationPermission {
+                                viewModel.downloadSeries(
+                                    libraryId,
+                                    selectedSeries.name,
+                                    selectedSeries.books.map { it.id },
+                                    originServerUrl
+                                )
+                            }
                         },
                         label = {
                             Text(
@@ -773,6 +782,7 @@ fun LibraryItemsScreen(
                     onClick = { onItem(book.id) },
                     onLongClick = downloadLongPressAction(
                         status = statuses[book.id to book.originServerUrl],
+                        requestNotificationPermission = requestNotificationPermission,
                         onStart = { viewModel.startDownload(book.id) },
                         onPause = { viewModel.pauseDownload(book.id, originServerUrl) }
                     )
@@ -790,6 +800,7 @@ fun BookDetailScreen(
     onPlay: (String) -> Unit,
     onEpisode: (String) -> Unit = {}
 ) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     val itemFlow = remember(itemId, originServerUrl) {
         viewModel.item(itemId, originServerUrl)
     }
@@ -970,12 +981,14 @@ fun BookDetailScreen(
             item {
                 WearChip(
                     onClick = {
-                        viewModel.downloadPodcastSeries(
-                            podcastId = itemId,
-                            seriesName = item?.title ?: "Podcast",
-                            episodes = episodes,
-                            originServerUrl = originServerUrl
-                        )
+                        requestNotificationPermission {
+                            viewModel.downloadPodcastSeries(
+                                podcastId = itemId,
+                                seriesName = item?.title ?: "Podcast",
+                                episodes = episodes,
+                                originServerUrl = originServerUrl
+                            )
+                        }
                     },
                     label = {
                         Text(
@@ -1085,6 +1098,7 @@ fun BookDetailScreen(
                     onClick = { onEpisode(episode.id) },
                     onLongClick = downloadLongPressAction(
                         status = status?.status,
+                        requestNotificationPermission = requestNotificationPermission,
                         onStart = { viewModel.startDownload(episode.id) },
                         onPause = { viewModel.pauseDownload(episode.id, originServerUrl) }
                     ),
@@ -1183,6 +1197,7 @@ fun EpisodeDetailScreen(
     viewModel: LibraryViewModel,
     onPlay: (String) -> Unit
 ) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     val itemFlow = remember(episodeId, originServerUrl) {
         viewModel.item(episodeId, originServerUrl)
     }
@@ -1234,7 +1249,11 @@ fun EpisodeDetailScreen(
                 downloadedBytes = download?.downloadedBytes ?: 0,
                 totalBytes = download?.fileSizeBytes ?: 0,
                 error = download?.error,
-                onStart = { viewModel.startDownload(episodeId) },
+                onStart = {
+                    requestNotificationPermission {
+                        viewModel.startDownload(episodeId)
+                    }
+                },
                 onPause = { viewModel.pauseDownload(episodeId, originServerUrl) },
                 onDelete = {
                     if (confirmDelete.value) {
@@ -1366,6 +1385,7 @@ fun DownloadedScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Un
 
 @Composable
 fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     val query = remember { mutableStateOf("") }
     val input = textInput("Search title, author, or series") { query.value = it }
     val flow = remember(query.value) { viewModel.search(query.value) }
@@ -1397,6 +1417,7 @@ fun SearchScreen(viewModel: LibraryViewModel, onItem: (String, String) -> Unit) 
                 onClick = { onItem(book.id, book.originServerUrl) },
                 onLongClick = downloadLongPressAction(
                     status = statuses[book.id to book.originServerUrl],
+                    requestNotificationPermission = requestNotificationPermission,
                     onStart = { viewModel.startDownload(book.id) },
                     onPause = { viewModel.pauseDownload(book.id, book.originServerUrl) }
                 )
@@ -2320,6 +2341,19 @@ private fun sleepTimerMinutes(remainingMs: Long): String {
 }
 
 @Composable
+private fun PrivacyPolicyChip() {
+    val uriHandler = LocalUriHandler.current
+    WearChip(
+        onClick = {
+            uriHandler.openUri("https://github.com/SolfenTheDragon/NortlinOS/blob/main/PRIVACY.md")
+        },
+        label = { Text("Privacy policy") },
+        secondaryLabel = { Text("How NortlinOS handles your data") },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val mode by viewModel.mode.collectAsStateWithLifecycle()
     val storage by viewModel.storageStats.collectAsStateWithLifecycle()
@@ -2332,6 +2366,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Settings") }
+        item { PrivacyPolicyChip() }
         item { SupportingText("Button color") }
         items(AccentTheme.entries) { theme ->
             ChoiceChip(
@@ -2744,11 +2779,13 @@ private fun DownloadStatusIcon(status: DownloadStatus?) {
  */
 private fun downloadLongPressAction(
     status: DownloadStatus?,
+    requestNotificationPermission: ((() -> Unit) -> Unit),
     onStart: () -> Unit,
     onPause: () -> Unit
 ): () -> Unit = {
     when (status) {
-        null, DownloadStatus.PAUSED, DownloadStatus.FAILED -> onStart()
+        null, DownloadStatus.PAUSED, DownloadStatus.FAILED ->
+            requestNotificationPermission(onStart)
         DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> onPause()
         DownloadStatus.DOWNLOADED -> {}
     }
@@ -2808,6 +2845,7 @@ private fun DownloadAction(
     // label and would be indistinguishable when navigating by rotary bezel or TalkBack.
     episodeContext: String? = null
 ) {
+    val requestNotificationPermission = LocalRequestDownloadNotificationPermission.current
     fun withContext(text: String) = listOfNotNull(episodeContext, text).joinToString(" · ")
     when (status) {
         DownloadStatus.DOWNLOADED -> WearChip(
@@ -2842,7 +2880,7 @@ private fun DownloadAction(
             modifier = Modifier.fillMaxWidth()
         )
         DownloadStatus.PAUSED, DownloadStatus.FAILED -> WearChip(
-            onClick = onStart,
+            onClick = { requestNotificationPermission(onStart) },
             label = { Text("Resume download") },
             secondaryLabel = {
                 Text(withContext(error ?: downloadProgress(downloadedBytes, totalBytes)), maxLines = 1)
@@ -2851,7 +2889,7 @@ private fun DownloadAction(
             modifier = Modifier.fillMaxWidth()
         )
         null -> WearChip(
-            onClick = onStart,
+            onClick = { requestNotificationPermission(onStart) },
             label = { Text("Download for offline") },
             secondaryLabel = episodeContext?.let { context -> { Text(context, maxLines = 1) } },
             icon = { Icon(Icons.Default.Download, null) },
