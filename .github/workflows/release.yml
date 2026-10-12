@@ -1,7 +1,11 @@
 name: Release
 
-# Builds a release APK and publishes it as a GitHub Release. A signed AAB is included only when
-# the Play upload keystore is configured.
+# Builds two release APKs and publishes them as a GitHub Release:
+#   - NortlinOS-<version>.apk          HTTPS only, trusted certificates (nortlinos.allowInsecureServers=false)
+#   - NortlinOS-<version>-insecure.apk accepts HTTP and self-signed certificates (=true)
+# Both share one application ID and signature, so only one can be installed at a time.
+# A signed AAB (always the HTTPS-only build) is included only when the Play upload keystore is
+# configured.
 #
 # Trigger with either:
 #   - a version tag push, e.g. `git tag v1.2.3 && git push origin v1.2.3`
@@ -75,7 +79,7 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "path=$RUNNER_TEMP/release.jks" >> "$GITHUB_OUTPUT"
 
-      - name: Assemble release APK
+      - name: Assemble release APKs
         env:
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
@@ -84,7 +88,17 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
+          # Insecure variant first; the HTTPS-only build then overwrites the shared output dir
+          # and is what the later "Locate artifacts" step finds.
           ./gradlew assembleRelease --no-daemon \
+            -Pnortlinos.allowInsecureServers=true \
+            -PversionCode="$VERSION_CODE" \
+            -PversionName="$VERSION_NAME"
+          INSECURE_APK=$(find app/build/outputs/apk/release -maxdepth 1 -name "*.apk" -print -quit)
+          test -n "$INSECURE_APK"
+          cp "$INSECURE_APK" "NortlinOS-$VERSION_NAME-insecure.apk"
+          ./gradlew assembleRelease --no-daemon \
+            -Pnortlinos.allowInsecureServers=false \
             -PversionCode="$VERSION_CODE" \
             -PversionName="$VERSION_NAME"
 
@@ -99,6 +113,7 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           ./gradlew bundleRelease --no-daemon \
+            -Pnortlinos.allowInsecureServers=false \
             -PversionCode="$VERSION_CODE" \
             -PversionName="$VERSION_NAME"
 
@@ -124,6 +139,7 @@ jobs:
         run: |
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
           "$APKSIGNER" verify --print-certs -v "NortlinOS-$VERSION_NAME.apk"
+          "$APKSIGNER" verify --print-certs -v "NortlinOS-$VERSION_NAME-insecure.apk"
 
       - name: Verify Play bundle signature
         if: ${{ env.HAS_KEYSTORE == 'true' }}
@@ -145,6 +161,7 @@ jobs:
           generate_release_notes: true
           files: |
             NortlinOS-${{ steps.version.outputs.name }}.apk
+            NortlinOS-${{ steps.version.outputs.name }}-insecure.apk
             ${{ env.HAS_KEYSTORE == 'true' && format('NortlinOS-{0}.aab', steps.version.outputs.name) || '' }}
           body: |
             ${{ steps.keystore.outputs.path == '' && '> ⚠️ Built without a signing secret configured, so this APK is **unsigned**. No Play upload bundle was produced. Configure the `RELEASE_KEYSTORE_BASE64`/`RELEASE_KEYSTORE_PASSWORD`/`RELEASE_KEY_ALIAS`/`RELEASE_KEY_PASSWORD` repository secrets to publish a signed APK and Play-ready AAB.' || '' }}
