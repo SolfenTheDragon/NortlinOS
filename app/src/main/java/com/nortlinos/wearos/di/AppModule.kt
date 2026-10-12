@@ -1,6 +1,8 @@
 package com.nortlinos.wearos.di
 
+import android.annotation.SuppressLint
 import android.content.Context
+import com.nortlinos.wearos.BuildConfig
 import com.nortlinos.wearos.data.api.ApiClient
 import com.nortlinos.wearos.data.local.AppDatabase
 import com.nortlinos.wearos.data.local.DownloadDao
@@ -18,7 +20,12 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.EntryPoints
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.OkHttpClient
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import javax.inject.Singleton
 
 @Module
@@ -40,7 +47,26 @@ object AppModule {
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .apply { if (BuildConfig.ALLOW_INSECURE_SERVERS) trustAllCertificates() }
         .build()
+
+    /**
+     * Dev-only: accepts self-signed/untrusted certificates and any hostname. Compiled out of
+     * effect when `nortlinos.allowInsecureServers=false` (see gradle.properties).
+     */
+    @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager", "BadHostnameVerifier")
+    private fun OkHttpClient.Builder.trustAllCertificates(): OkHttpClient.Builder {
+        val trustManager = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        }
+        val sslContext = SSLContext.getInstance("TLS").apply {
+            init(null, arrayOf<TrustManager>(trustManager), SecureRandom())
+        }
+        return sslSocketFactory(sslContext.socketFactory, trustManager)
+            .hostnameVerifier { _, _ -> true }
+    }
 
     @Provides fun libraryDao(database: AppDatabase): LibraryDao = database.libraryDao()
     @Provides fun downloadDao(database: AppDatabase): DownloadDao = database.downloadDao()

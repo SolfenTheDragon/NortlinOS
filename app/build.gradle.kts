@@ -22,6 +22,12 @@ android {
         versionName = project.findProperty("versionName") as String? ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Single switch for HTTP + self-signed certificate support; see gradle.properties.
+        val allowInsecure =
+            (project.findProperty("nortlinos.allowInsecureServers") as String?)?.toBoolean() ?: false
+        buildConfigField("boolean", "ALLOW_INSECURE_SERVERS", allowInsecure.toString())
+        manifestPlaceholders["usesCleartextTraffic"] = allowInsecure.toString()
     }
 
     signingConfigs {
@@ -65,6 +71,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
 
