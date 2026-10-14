@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay30
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -50,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
@@ -153,6 +155,8 @@ import com.nortlinos.wearos.presentation.viewmodel.LoginViewModel
 import com.nortlinos.wearos.presentation.viewmodel.PlaybackSpeedFormat
 import com.nortlinos.wearos.presentation.viewmodel.PlayerViewModel
 import com.nortlinos.wearos.data.local.AccentTheme
+import com.nortlinos.wearos.presentation.theme.AccentColors
+import com.nortlinos.wearos.presentation.theme.AccentPalette
 import com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel
 import com.nortlinos.wearos.presentation.LocalRequestDownloadNotificationPermission
 import com.nortlinos.wearos.service.SleepTimerState
@@ -2378,7 +2382,64 @@ private fun PrivacyPolicyChip() {
 }
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel) {
+fun ThemeScreen(viewModel: SettingsViewModel) {
+    val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
+    val custom by viewModel.customAccentColor.collectAsStateWithLifecycle()
+    var invalid by remember { mutableStateOf(false) }
+    val colorInput = textInput("HTML color, e.g. #FF8800") { text ->
+        invalid = !viewModel.applyCustomAccent(text)
+    }
+    WearList {
+        item { ScreenTitle("Theme") }
+        items(AccentTheme.entries.filter { it != AccentTheme.CUSTOM }) { theme ->
+            ThemeChip(theme.label, AccentColors.palette(theme, null), accent == theme) {
+                viewModel.setAccentTheme(theme)
+            }
+        }
+        custom?.let { argb ->
+            item {
+                ThemeChip("Custom", AccentColors.fromColor(argb), accent == AccentTheme.CUSTOM) {
+                    viewModel.setAccentTheme(AccentTheme.CUSTOM)
+                }
+            }
+        }
+        item {
+            InputChip(
+                "Custom color (HTML tag)",
+                custom?.let(AccentColors::format).orEmpty(),
+                colorInput
+            )
+        }
+        if (invalid) {
+            item {
+                StatusText(
+                    "Not a valid color. Use #RGB, #RRGGBB, or a name like orange.",
+                    MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+/** A button drawn in the theme's own button color, so the list previews each theme. */
+@Composable
+private fun ThemeChip(label: String, palette: AccentPalette, selected: Boolean, onClick: () -> Unit) {
+    WearChip(
+        onClick = onClick,
+        label = { Text(label) },
+        secondaryLabel = if (selected) ({ Text("Selected") }) else null,
+        icon = if (selected) ({ Icon(Icons.Default.Check, null) }) else null,
+        style = ChipStyle.PRIMARY,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(palette.primary),
+            contentColor = Color.Black
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
     val mode by viewModel.mode.collectAsStateWithLifecycle()
     val storage by viewModel.storageStats.collectAsStateWithLifecycle()
     val downloadedBooks by viewModel.downloadedBooks.collectAsStateWithLifecycle()
@@ -2392,14 +2453,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     WearList {
         item { ScreenTitle("Settings") }
         item { PrivacyPolicyChip() }
-        item { SupportingText("Button color") }
-        items(AccentTheme.entries) { theme ->
-            ChoiceChip(
-                label = theme.label,
-                selected = accent == theme,
-                onClick = { viewModel.setAccentTheme(theme) }
-            )
-        }
+        item { NavigationChip("Theme", accent.label, Icons.Default.Palette, onTheme) }
         item { SupportingText("Downloads") }
         item {
             SupportingText(

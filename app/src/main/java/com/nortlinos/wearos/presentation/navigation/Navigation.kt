@@ -24,6 +24,7 @@ import com.nortlinos.wearos.presentation.screen.PlayerScreen
 import com.nortlinos.wearos.presentation.screen.RecentPlaybackScreen
 import com.nortlinos.wearos.presentation.screen.SearchScreen
 import com.nortlinos.wearos.presentation.screen.SettingsScreen
+import com.nortlinos.wearos.presentation.screen.ThemeScreen
 import com.nortlinos.wearos.presentation.viewmodel.LibraryViewModel
 import com.nortlinos.wearos.presentation.viewmodel.LoginViewModel
 import com.nortlinos.wearos.presentation.viewmodel.PlayerViewModel
@@ -43,6 +44,7 @@ private object Routes {
     const val PLAYER = "player"
     const val RECENT = "recent"
     const val SETTINGS = "settings"
+    const val THEME = "theme"
     fun items(id: String, origin: String) = "items/${Uri.encode(origin)}/$id"
     fun detail(id: String, origin: String) = "detail/${Uri.encode(origin)}/$id"
     fun episode(id: String, origin: String) = "episode/${Uri.encode(origin)}/$id"
@@ -205,7 +207,10 @@ fun AppNavHost(
             PlayerScreen(playerViewModel, isAmbient)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(settingsViewModel)
+            SettingsScreen(settingsViewModel, onTheme = { nav.navigate(Routes.THEME) })
+        }
+        composable(Routes.THEME) {
+            ThemeScreen(settingsViewModel)
         }
     }
     }

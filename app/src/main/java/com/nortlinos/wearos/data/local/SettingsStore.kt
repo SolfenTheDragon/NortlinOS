@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -20,7 +21,8 @@ private val Context.settingsDataStore by preferencesDataStore("display_settings"
 enum class ProgressDisplayMode { CHAPTER, BOOK }
 
 enum class AccentTheme(val label: String) {
-    AMBER("Amber"), TEAL("Teal"), BLUE("Blue"), GREEN("Green"), PURPLE("Purple"), ROSE("Rose")
+    AMBER("Amber"), TEAL("Teal"), BLUE("Blue"), GREEN("Green"), PURPLE("Purple"), ROSE("Rose"),
+    CUSTOM("Custom")
 }
 
 data class SavedLogin(
@@ -160,6 +162,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     }
 
     private val accentThemeKey = stringPreferencesKey("accent_theme")
+    private val customAccentKey = longPreferencesKey("custom_accent_argb")
     private val precacheKey = booleanPreferencesKey("precache_libraries")
 
     /** Button accent color. Defaults to the original amber. */
@@ -169,6 +172,16 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setAccentTheme(theme: AccentTheme) {
         context.settingsDataStore.edit { it[accentThemeKey] = theme.name }
+    }
+
+    /** User-specified accent as opaque ARGB, used when [AccentTheme.CUSTOM] is selected. */
+    val customAccentColor: Flow<Long?> = context.settingsDataStore.data.map { it[customAccentKey] }
+
+    suspend fun setCustomAccentColor(argb: Long) {
+        context.settingsDataStore.edit {
+            it[customAccentKey] = argb
+            it[accentThemeKey] = AccentTheme.CUSTOM.name
+        }
     }
 
     /**

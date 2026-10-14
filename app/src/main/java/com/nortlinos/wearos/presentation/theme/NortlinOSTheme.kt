@@ -44,17 +44,89 @@ private val BaseColorScheme = ColorScheme(
     onErrorContainer = Color(0xFFFFDAD5)
 )
 
-private class Accent(
+/** Accent colors as opaque ARGB values. [primary] is also the color of primary buttons. */
+class AccentPalette(
     val primary: Long, val dim: Long, val container: Long, val onContainer: Long
 )
 
-private fun AccentTheme.accent() = when (this) {
-    AccentTheme.AMBER -> Accent(0xFFF4A340, 0xFFC87616, 0xFF5A3A0E, 0xFFFFDDB5)
-    AccentTheme.TEAL -> Accent(0xFF65D6C4, 0xFF279889, 0xFF1F3B37, 0xFFCDEFE9)
-    AccentTheme.BLUE -> Accent(0xFF8AB4F8, 0xFF5B86CC, 0xFF1F3354, 0xFFD6E4FF)
-    AccentTheme.GREEN -> Accent(0xFF7FD67F, 0xFF4BA04B, 0xFF1F3F1F, 0xFFD2F2D2)
-    AccentTheme.PURPLE -> Accent(0xFFC9A0F5, 0xFF9A6CC8, 0xFF3D2B54, 0xFFEBDAFF)
-    AccentTheme.ROSE -> Accent(0xFFF58FB0, 0xFFC85F82, 0xFF54243A, 0xFFFFD8E6)
+private val PresetPalettes = mapOf(
+    AccentTheme.AMBER to AccentPalette(0xFFF4A340, 0xFFC87616, 0xFF5A3A0E, 0xFFFFDDB5),
+    AccentTheme.TEAL to AccentPalette(0xFF65D6C4, 0xFF279889, 0xFF1F3B37, 0xFFCDEFE9),
+    AccentTheme.BLUE to AccentPalette(0xFF8AB4F8, 0xFF5B86CC, 0xFF1F3354, 0xFFD6E4FF),
+    AccentTheme.GREEN to AccentPalette(0xFF7FD67F, 0xFF4BA04B, 0xFF1F3F1F, 0xFFD2F2D2),
+    AccentTheme.PURPLE to AccentPalette(0xFFC9A0F5, 0xFF9A6CC8, 0xFF3D2B54, 0xFFEBDAFF),
+    AccentTheme.ROSE to AccentPalette(0xFFF58FB0, 0xFFC85F82, 0xFF54243A, 0xFFFFD8E6)
+)
+
+object AccentColors {
+    private const val MIN_LUMINANCE = 0.35
+    private val named = mapOf(
+        "black" to 0x000000L, "white" to 0xFFFFFFL, "red" to 0xFF0000L, "lime" to 0x00FF00L,
+        "blue" to 0x0000FFL, "yellow" to 0xFFFF00L, "cyan" to 0x00FFFFL, "aqua" to 0x00FFFFL,
+        "magenta" to 0xFF00FFL, "fuchsia" to 0xFF00FFL, "gray" to 0x808080L, "grey" to 0x808080L,
+        "silver" to 0xC0C0C0L, "maroon" to 0x800000L, "olive" to 0x808000L, "green" to 0x008000L,
+        "purple" to 0x800080L, "teal" to 0x008080L, "navy" to 0x000080L, "orange" to 0xFFA500L,
+        "pink" to 0xFFC0CBL, "gold" to 0xFFD700L, "coral" to 0xFF7F50L, "crimson" to 0xDC143CL,
+        "violet" to 0xEE82EEL, "indigo" to 0x4B0082L, "turquoise" to 0x40E0D0L,
+        "salmon" to 0xFA8072L, "tomato" to 0xFF6347L, "skyblue" to 0x87CEEBL
+    )
+
+    /**
+     * Parses an HTML color (`#RGB`, `#RRGGBB`, the same without `#`, or a common CSS color name)
+     * into opaque ARGB, or null when it is not a valid color.
+     */
+    fun parse(input: String): Long? {
+        val text = input.trim().lowercase()
+        named[text]?.let { return 0xFF000000L or it }
+        val hex = text.removePrefix("#")
+        if (hex.any { it !in '0'..'9' && it !in 'a'..'f' }) return null
+        val rgb = when (hex.length) {
+            3 -> hex.map { "$it$it" }.joinToString("")
+            6 -> hex
+            else -> return null
+        }
+        return 0xFF000000L or rgb.toLong(16)
+    }
+
+    fun format(argb: Long): String = "#%06X".format(argb and 0xFFFFFF)
+
+    /** Builds a full palette from one color, lifting colors too dark to read on black. */
+    fun fromColor(argb: Long): AccentPalette {
+        var primary = argb or 0xFF000000L
+        if (luminance(primary) < MIN_LUMINANCE) {
+            var amount = 0.1f
+            while (amount < 1f && luminance(mix(argb, 0xFFFFFFFFL, amount)) < MIN_LUMINANCE) amount += 0.1f
+            primary = mix(argb, 0xFFFFFFFFL, amount.coerceAtMost(1f))
+        }
+        return AccentPalette(
+            primary = primary,
+            dim = mix(primary, 0xFF000000L, 0.22f),
+            container = mix(primary, 0xFF000000L, 0.7f),
+            onContainer = mix(primary, 0xFFFFFFFFL, 0.8f)
+        )
+    }
+
+    fun palette(theme: AccentTheme, custom: Long?): AccentPalette = when {
+        theme == AccentTheme.CUSTOM && custom != null -> fromColor(custom)
+        else -> PresetPalettes[theme] ?: PresetPalettes.getValue(AccentTheme.AMBER)
+    }
+
+    private fun channel(argb: Long, shift: Int) = ((argb shr shift) and 0xFF).toInt()
+
+    private fun mix(from: Long, to: Long, amount: Float): Long {
+        fun blend(shift: Int): Long =
+            (channel(from, shift) + (channel(to, shift) - channel(from, shift)) * amount)
+                .toInt().coerceIn(0, 255).toLong() shl shift
+        return 0xFF000000L or blend(16) or blend(8) or blend(0)
+    }
+
+    private fun luminance(argb: Long): Double {
+        fun lin(shift: Int): Double {
+            val c = channel(argb, shift) / 255.0
+            return if (c <= 0.03928) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * lin(16) + 0.7152 * lin(8) + 0.0722 * lin(0)
+    }
 }
 
 /**
@@ -62,9 +134,13 @@ private fun AccentTheme.accent() = when (this) {
  * screen shares consistent colors, typography, and shapes.
  */
 @Composable
-fun NortlinOSTheme(accent: AccentTheme = AccentTheme.AMBER, content: @Composable () -> Unit) {
-    val scheme = remember(accent) {
-        val a = accent.accent()
+fun NortlinOSTheme(
+    accent: AccentTheme = AccentTheme.AMBER,
+    customColor: Long? = null,
+    content: @Composable () -> Unit
+) {
+    val scheme = remember(accent, customColor) {
+        val a = AccentColors.palette(accent, customColor)
         BaseColorScheme.copy(
             primary = Color(a.primary),
             primaryDim = Color(a.dim),

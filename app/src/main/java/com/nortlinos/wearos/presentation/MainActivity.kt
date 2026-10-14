@@ -50,7 +50,8 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             val accent by settingsStore.accentTheme.collectAsState(AccentTheme.AMBER)
-            NortlinOSTheme(accent) {
+            val customAccent by settingsStore.customAccentColor.collectAsState(null)
+            NortlinOSTheme(accent, customAccent) {
                 ProvideDownloadNotificationPermission {
                     AppScaffold {
                         AppNavHost(

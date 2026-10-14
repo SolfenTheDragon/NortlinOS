@@ -18,6 +18,7 @@ import com.nortlinos.wearos.data.local.LibraryEntity
 import com.nortlinos.wearos.data.local.LibraryItemEntity
 import com.nortlinos.wearos.data.local.ProgressDisplayMode
 import com.nortlinos.wearos.data.local.AccentTheme
+import com.nortlinos.wearos.presentation.theme.AccentColors
 import com.nortlinos.wearos.data.local.SettingsStore
 import com.nortlinos.wearos.data.api.AudioBookmarkDto
 import com.nortlinos.wearos.data.repository.BookmarkRepository
@@ -1684,8 +1685,17 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val accentTheme = settingsStore.accentTheme
         .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.AMBER)
+    val customAccentColor = settingsStore.customAccentColor
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val precacheLibraries = settingsStore.precacheLibraries
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Applies an HTML color as the custom theme; returns false (changing nothing) if invalid. */
+    fun applyCustomAccent(input: String): Boolean {
+        val color = AccentColors.parse(input) ?: return false
+        viewModelScope.launch { settingsStore.setCustomAccentColor(color) }
+        return true
+    }
 
     fun setAccentTheme(theme: AccentTheme) =
         viewModelScope.launch { settingsStore.setAccentTheme(theme) }
