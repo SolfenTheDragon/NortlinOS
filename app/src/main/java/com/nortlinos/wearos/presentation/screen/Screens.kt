@@ -2450,6 +2450,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
     val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
     val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
     val formatDescriptions by viewModel.formatDescriptions.collectAsStateWithLifecycle()
+    val headphoneCheck by viewModel.headphoneCheck.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle("Settings") }
         item { PrivacyPolicyChip() }
@@ -2483,6 +2484,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
                 description = "After connecting, load library listings in the background so they are ready as you browse. Uses more battery and data.",
                 checked = precache,
                 onCheckedChange = viewModel::setPrecacheLibraries
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Headphone check",
+                description = "Ask before playing through the watch speaker when no headphones are connected.",
+                checked = headphoneCheck,
+                onCheckedChange = viewModel::setHeadphoneCheck
             )
         }
         item {

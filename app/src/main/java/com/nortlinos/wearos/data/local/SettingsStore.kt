@@ -103,6 +103,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val seriesViewKey = booleanPreferencesKey("library_series_view")
     private val homeSearchKey = booleanPreferencesKey("home_search_visible")
     private val homePodcastsKey = booleanPreferencesKey("home_podcasts_visible")
+    private val headphoneCheckKey = booleanPreferencesKey("headphone_check")
     private val formatDescriptionsKey = booleanPreferencesKey("format_html_descriptions")
 
     val progressDisplayMode: Flow<ProgressDisplayMode> = context.settingsDataStore.data.map {
@@ -141,6 +142,15 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setHomeSearchVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homeSearchKey] = visible }
+    }
+
+    /** Asks before starting playback with no headphones connected. Defaults to on. */
+    val headphoneCheck: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[headphoneCheckKey] ?: true
+    }
+
+    suspend fun setHeadphoneCheck(enabled: Boolean) {
+        context.settingsDataStore.edit { it[headphoneCheckKey] = enabled }
     }
 
     /** Renders HTML markup in book/podcast descriptions as formatted text. Defaults to on. */

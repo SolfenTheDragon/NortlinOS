@@ -1133,6 +1133,8 @@ class PlayerViewModel @Inject constructor(
     val bookmarkError: StateFlow<String?> = _bookmarkError.asStateFlow()
     private var bookmarksJob: Job? = null
     private var speakerAccepted = false
+    private val headphoneCheckEnabled = settingsStore.headphoneCheck
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     private var headsetWaiter: Job? = null
     private var pendingConnects: MutableList<(MediaController) -> Unit>? = null
 
@@ -1296,7 +1298,8 @@ class PlayerViewModel @Inject constructor(
      */
     private fun startPlayback(player: MediaController) {
         val outputs = audioOutputs.current()
-        if (AudioOutputPolicy.shouldPrompt(outputs, speakerAccepted)) {
+        val checkEnabled = headphoneCheckEnabled.value
+        if (checkEnabled && AudioOutputPolicy.shouldPrompt(outputs, speakerAccepted)) {
             _outputPrompt.value = OutputPrompt(speakerAvailable = outputs.hasSpeaker)
             return
         }
@@ -1687,6 +1690,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.AMBER)
     val customAccentColor = settingsStore.customAccentColor
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val headphoneCheck = settingsStore.headphoneCheck
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val precacheLibraries = settingsStore.precacheLibraries
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
@@ -1704,6 +1709,9 @@ class SettingsViewModel @Inject constructor(
         settingsStore.setPrecacheLibraries(enabled)
         if (enabled) libraryRepository.precacheIfEnabled()
     }
+
+    fun setHeadphoneCheck(enabled: Boolean) =
+        viewModelScope.launch { settingsStore.setHeadphoneCheck(enabled) }
 
     fun setSeriesView(enabled: Boolean) =
         viewModelScope.launch { settingsStore.setLibrarySeriesView(enabled) }
