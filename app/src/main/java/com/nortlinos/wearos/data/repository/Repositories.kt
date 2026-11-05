@@ -225,6 +225,10 @@ class SessionRepository @Inject constructor(
             return OpenIdAttempt.Aborted(error.message ?: "Could not reach the server")
         }
 
+        if (!OidcFlow.isSafeAuthorizationUrl(authorizationUrl, SecureServerUrl.allowInsecure)) {
+            return OpenIdAttempt.Aborted("Server returned an unsafe sign-in address")
+        }
+
         val code = when (val outcome = authorizer.authorize(authorizationUrl)) {
             is AuthorizeOutcome.Unavailable -> return OpenIdAttempt.TryNext(outcome.reason)
             is AuthorizeOutcome.Failed -> return OpenIdAttempt.Aborted(outcome.message)

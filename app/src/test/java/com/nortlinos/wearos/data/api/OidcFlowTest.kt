@@ -126,4 +126,15 @@ class OidcFlowTest {
         assertEquals("a+b/c", params["code"])
         assertEquals("s", params["state"])
     }
+
+    @Test
+    fun `authorization url must be https unless insecure builds allow http`() {
+        assertTrue(OidcFlow.isSafeAuthorizationUrl("https://idp.example.com/auth?x=1", allowHttp = false))
+        assertFalse(OidcFlow.isSafeAuthorizationUrl("http://idp.example.com/auth", allowHttp = false))
+        assertTrue(OidcFlow.isSafeAuthorizationUrl("http://idp.example.com/auth", allowHttp = true))
+        assertFalse(OidcFlow.isSafeAuthorizationUrl("tel:+15551234", allowHttp = true))
+        assertFalse(OidcFlow.isSafeAuthorizationUrl("market://details?id=x", allowHttp = true))
+        assertFalse(OidcFlow.isSafeAuthorizationUrl("https://user:pw@idp.example.com/", allowHttp = false))
+        assertFalse(OidcFlow.isSafeAuthorizationUrl(null, allowHttp = true))
+    }
 }

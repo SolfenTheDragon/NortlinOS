@@ -1,5 +1,6 @@
 package com.nortlinos.wearos.data.api
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -52,6 +53,17 @@ object OidcFlow {
     /** Label for the sign-in affordance; servers may customise it. */
     fun buttonText(status: ServerStatusDto?): String =
         status?.authFormData?.authOpenIDButtonText?.takeIf { it.isNotBlank() } ?: "Sign in with SSO"
+
+    /**
+     * True when [url] is safe to hand to a browser or the phone companion: an absolute `https`
+     * URL (or `http` only when [allowHttp]) with a host and no embedded credentials. The URL comes
+     * from a server response, so anything else (`tel:`, `market:`, `intent:` …) must not launch.
+     */
+    fun isSafeAuthorizationUrl(url: String?, allowHttp: Boolean): Boolean {
+        val parsed = url?.toHttpUrlOrNull() ?: return false
+        if (!parsed.isHttps && !allowHttp) return false
+        return parsed.host.isNotEmpty() && parsed.username.isEmpty() && parsed.password.isEmpty()
+    }
 
     fun newCodeVerifier(random: SecureRandom = SecureRandom()): String =
         encoder.encodeToString(ByteArray(VERIFIER_BYTES).also(random::nextBytes))
