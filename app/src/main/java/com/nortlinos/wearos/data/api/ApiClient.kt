@@ -94,7 +94,8 @@ class ApiClient @Inject constructor(
         }
 
         @Synchronized
-        override fun loadForRequest(url: HttpUrl): List<Cookie> = cookies.values.toList()
+        override fun loadForRequest(url: HttpUrl): List<Cookie> =
+            cookies.values.filter { it.matches(url) }
     }
 
     companion object {
