@@ -15,8 +15,8 @@ import androidx.compose.ui.text.style.TextDecoration
  * are never rendered.
  */
 internal object HtmlText {
-    private val TAG_OR_ENTITY = Regex("""</?[a-zA-Z][^>]*>|<!--|&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);""")
-    private val TOKEN = Regex("""<!--.*?-->|<(/?)([a-zA-Z][a-zA-Z0-9]*)[^>]*?(/?)>|[^<]+|<""", RegexOption.DOT_MATCHES_ALL)
+    private val TAG_OR_ENTITY = Regex("""</?[a-zA-Z][^>]{0,2000}>|<!--|&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);""")
+    private val TOKEN = Regex("""<!--.*?-->|<(/?)([a-zA-Z][a-zA-Z0-9]*)[^>]{0,2000}?(/?)>|[^<]+|<""", RegexOption.DOT_MATCHES_ALL)
     private val BLOCK = setOf("p", "div", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "table", "tr")
     private val HEADING = setOf("h1", "h2", "h3", "h4", "h5", "h6")
     private val ENTITIES = mapOf(
