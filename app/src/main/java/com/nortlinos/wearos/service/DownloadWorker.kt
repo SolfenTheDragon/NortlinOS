@@ -143,6 +143,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         OFFLINE_COVER_WIDTH_PX
                     ),
                     server.token,
+                    server.url,
                     coverFile,
                     repository.availableBytes(),
                     expectedBytes = 0
@@ -166,6 +167,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             downloadTrack(
                 ApiClient.resolveUrl(server.url, track.contentUrl),
                 server.token,
+                server.url,
                 file,
                 repository.availableBytes(),
                 expectedBytes = track.metadata?.size ?: 0
@@ -218,6 +220,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private fun downloadTrack(
         url: String,
         token: String,
+        serverUrl: String,
         file: File,
         availableBytes: Long,
         expectedBytes: Long
@@ -229,7 +232,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val offset = file.takeIf(File::exists)?.length() ?: 0L
         val request = Request.Builder().url(url)
             .apply {
-                ApiClient.authHeader(token)?.let { (name, value) -> header(name, value) }
+                ApiClient.authHeaderFor(serverUrl, url, token)?.let { (name, value) -> header(name, value) }
                 if (offset > 0) header("Range", "bytes=$offset-")
             }
             .build()

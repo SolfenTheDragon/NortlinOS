@@ -63,4 +63,17 @@ class CoverSourceTest {
             ApiClient.sizedCoverUrl("https://abs.example/img/other.png", 160)
         )
     }
+
+    @Test
+    fun `bearer token is only attached for the server's own origin`() {
+        val base = "https://abs.example.com"
+        assertEquals(
+            "Authorization" to "Bearer t",
+            ApiClient.authHeaderFor(base, "https://abs.example.com/api/items/1/file", "t")
+        )
+        assertNull(ApiClient.authHeaderFor(base, "https://evil.example.net/a", "t"))
+        assertNull(ApiClient.authHeaderFor(base, "http://abs.example.com/a", "t"))
+        assertNull(ApiClient.authHeaderFor(base, "https://abs.example.com:8443/a", "t"))
+        assertNull(ApiClient.authHeaderFor(base, "https://abs.example.com/a", null))
+    }
 }

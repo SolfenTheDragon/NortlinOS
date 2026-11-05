@@ -94,7 +94,9 @@ internal fun coverRequest(
         if (baseUrl.isNullOrEmpty()) return null
         ApiClient.sizedCoverUrl(ApiClient.resolveUrl(baseUrl, coverPath), COVER_REQUEST_WIDTH_PX)
     }
-    val headers = ApiClient.authHeader(authToken)?.let { (name, value) ->
+    val headers = (if (data is String) {
+        baseUrl?.let { ApiClient.authHeaderFor(it, data, authToken) }
+    } else null)?.let { (name, value) ->
         Headers.Builder().add(name, value).build()
     } ?: Headers.Builder().build()
     return ImageRequest.Builder(context)

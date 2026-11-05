@@ -4,6 +4,7 @@ import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -104,6 +105,19 @@ class ApiClient @Inject constructor(
             if (token.isNullOrEmpty()) return null
             val bearerValue = "Bearer" + " " + token
             return "Authorization" to bearerValue
+        }
+
+        /**
+         * Like [authHeader], but only when [url] is on the same scheme, host and port as
+         * [baseUrl]. Server-supplied absolute URLs must never receive the bearer token.
+         */
+        fun authHeaderFor(baseUrl: String, url: String, token: String?): Pair<String, String>? {
+            val base = baseUrl.toHttpUrlOrNull() ?: return null
+            val target = url.toHttpUrlOrNull() ?: return null
+            if (base.scheme != target.scheme || base.host != target.host || base.port != target.port) {
+                return null
+            }
+            return authHeader(token)
         }
 
         /** Resolves a server-relative path (e.g. cover art) into an absolute URL. */
