@@ -15,7 +15,10 @@ android {
         // impossible, and it is also what scopes user data, so it is fixed here deliberately.
         applicationId = "com.nortlinos.wearos"
         minSdk = 33
-        targetSdk = 35
+        // Wear OS 6 is API 36. Google asks Wear apps to target it before uploading to Play; the
+        // target-36 behavior changes (batched tile enter/leave events, granular health
+        // permissions) touch nothing this app uses.
+        targetSdk = 36
         // Overridable by the release workflow (-PversionCode=... -PversionName=...) so a tagged
         // CI build stamps the real release number without changing the local-dev default.
         versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1

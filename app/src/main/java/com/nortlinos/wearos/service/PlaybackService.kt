@@ -3,6 +3,8 @@ package com.nortlinos.wearos.service
 import com.nortlinos.wearos.tile.NowPlayingSnapshot
 import com.nortlinos.wearos.tile.NowPlayingSnapshotStore
 import com.nortlinos.wearos.tile.TileCover
+import com.nortlinos.wearos.tile.TileLaunch
+import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -33,6 +35,7 @@ import com.nortlinos.wearos.data.model.PlaybackSession
 import com.nortlinos.wearos.data.repository.ProgressRepository
 import com.nortlinos.wearos.data.repository.SessionRepository
 import com.nortlinos.wearos.data.repository.ServerIdentity
+import com.nortlinos.wearos.presentation.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -119,6 +122,9 @@ class PlaybackService : MediaSessionService() {
             .setAudioOffloadPreferences(AUDIO_OFFLOAD_PREFERENCES)
             .build()
         session = MediaSession.Builder(this, player)
+            // Wear OS builds the media Ongoing Activity from this intent; tapping the ongoing
+            // chip or the system media controls should land in the app, not do nothing.
+            .setSessionActivity(openAppIntent())
             // Cover art for the system media controls. It goes through the same authenticated
             // data source as the audio (covers are auth-protected), and the cache keeps the last
             // bitmap so metadata updates within a book never re-fetch or re-decode it.
@@ -148,6 +154,27 @@ class PlaybackService : MediaSessionService() {
             }
         }
         player.addListener(progressListener)
+    }
+
+    /**
+     * Opens the player on the loaded book, through the same extras the Now Playing tile uses
+     * (which never restart a book that is already playing), or just the app when nothing is
+     * loaded yet.
+     */
+    private fun openAppIntent(): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        currentProgress()?.let { progress ->
+            intent.putExtra(TileLaunch.EXTRA_ITEM_ID, progress.itemId)
+                .putExtra(TileLaunch.EXTRA_ORIGIN, progress.originServerUrl)
+                .putExtra(TileLaunch.EXTRA_RESUME, false)
+        }
+        return PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     /**
@@ -187,6 +214,7 @@ class PlaybackService : MediaSessionService() {
             // loaded with a new book, where the position is still being established.
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) flushProgress()
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                session?.setSessionActivity(openAppIntent())
                 publishTileSnapshot()
                 saveTileCover()
             }
