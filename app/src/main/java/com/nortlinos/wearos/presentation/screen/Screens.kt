@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay30
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
@@ -65,6 +66,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -86,6 +88,9 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.ui.platform.LocalContext
 import com.nortlinos.wearos.presentation.viewmodel.OutputPrompt
+import com.nortlinos.wearos.presentation.viewmodel.StatsViewModel
+import com.nortlinos.wearos.data.repository.DayTotal
+import com.nortlinos.wearos.data.repository.ListeningStatsMath
 import com.nortlinos.wearos.presentation.viewmodel.PlaybackPosition
 import com.nortlinos.wearos.presentation.viewmodel.ChapterOption
 import androidx.wear.compose.material3.TitleCard
@@ -257,6 +262,7 @@ fun HomeScreen(
     onSearch: () -> Unit,
     onRecent: () -> Unit,
     onNowPlaying: () -> Unit,
+    onStats: () -> Unit,
     onSettings: () -> Unit
 ) {
     val player by playerViewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -264,6 +270,7 @@ fun HomeScreen(
     val online by libraryViewModel.online.collectAsStateWithLifecycle()
     val searchVisible by settingsViewModel.homeSearchVisible.collectAsStateWithLifecycle()
     val podcastsVisible by settingsViewModel.homePodcastsVisible.collectAsStateWithLifecycle()
+    val statsVisible by settingsViewModel.homeStatsVisible.collectAsStateWithLifecycle()
     WearList {
         item { ScreenTitle(stringResource(R.string.app_name)) }
         player.itemId?.let {
@@ -320,6 +327,16 @@ fun HomeScreen(
         }
         if (searchVisible) {
             item { NavigationChip("Search", "Search the local cache", Icons.Default.Search, onSearch) }
+        }
+        if (statsVisible) {
+            item {
+                NavigationChip(
+                    "Listening stats",
+                    "Your listening time from the server",
+                    Icons.Default.BarChart,
+                    onStats
+                )
+            }
         }
         item { NavigationChip("Settings", "Progress display and account", Icons.Default.Settings, onSettings) }
     }
@@ -389,6 +406,312 @@ fun RecentPlaybackScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Listening stats, laid out for a glance first (Wear OS assumes roughly seven seconds of
+ * attention): today's time and the streak, then the week, then everything else on scroll.
+ *
+ * Nothing here is tappable except Refresh, so figures float on the black background instead of
+ * sitting in containers that would look like buttons. Key figures use the numeral type styles,
+ * which do not grow with the system font size and so cannot overflow a 192 dp screen; captions
+ * use body styles, which do scale and wrap to a second line rather than clip.
+ */
+@Composable
+fun StatsScreen(viewModel: StatsViewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val stats = state.stats
+    val locale = LocalConfiguration.current.locales[0]
+    val today = remember { java.time.LocalDate.now() }
+    val olderDate = remember(locale) {
+        java.time.format.DateTimeFormatter.ofPattern(
+            android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMM"),
+            locale
+        )
+    }
+    val twoColumns = isLargeRoundScreen()
+    WearList {
+        item { ScreenTitle("Listening stats") }
+        if (stats == null) {
+            when {
+                state.loading -> item {
+                    CircularProgressIndicator(modifier = Modifier.padding(12.dp).size(32.dp))
+                }
+                state.error == "Offline" -> item {
+                    EmptyState("You're offline", "Stats come from your server. Connect and refresh.")
+                }
+                else -> item {
+                    EmptyState("Stats unavailable", state.error ?: "Tap Refresh to try again.")
+                }
+            }
+        } else {
+            item { TodayHero(stats.todaySeconds, stats.currentStreakDays) }
+            item { FreshnessLine(state.loading, state.error, state.fetchedAt) }
+            item {
+                SupportingText("Last 7 days · ${ListeningStatsMath.duration(stats.weekSeconds)}")
+            }
+            item { WeekBars(stats.lastSevenDays, today) }
+            val totals = listOfNotNull(
+                stats.totalSeconds.let {
+                    StatFigure(
+                        ListeningStatsMath.duration(it),
+                        "All time",
+                        ListeningStatsMath.spokenDuration(it)
+                    )
+                },
+                StatFigure(stats.daysListened.toString(), "Days listened"),
+                stats.itemsFinished?.let { StatFigure(it.toString(), "Finished") }
+            )
+            // Two figures side by side only where there is room (Google's 225 dp breakpoint);
+            // on small watches each gets the full width so nothing is squeezed or clipped.
+            totals.chunked(if (twoColumns) 2 else 1).forEachIndexed { index, row ->
+                item(key = "totals$index") { StatFigureRow(row) }
+            }
+            if (stats.topItems.isNotEmpty()) {
+                item { SupportingText("Most listened") }
+                itemsIndexed(stats.topItems, key = { index, _ -> "top$index" }) { _, entry ->
+                    StatEntry(
+                        title = entry.title,
+                        detail = listOfNotNull(
+                            ListeningStatsMath.duration(entry.seconds),
+                            entry.author
+                        ).joinToString(" · "),
+                        spokenDetail = ListeningStatsMath.spokenDuration(entry.seconds)
+                    )
+                }
+            }
+            if (stats.recentSessions.isNotEmpty()) {
+                item { SupportingText("Recent sessions") }
+                itemsIndexed(stats.recentSessions, key = { index, _ -> "recent$index" }) { _, entry ->
+                    val day = entry.date?.let {
+                        ListeningStatsMath.relativeDay(it, today, locale, olderDate)
+                    }
+                    StatEntry(
+                        title = entry.title,
+                        detail = listOfNotNull(day, ListeningStatsMath.duration(entry.seconds))
+                            .joinToString(" · "),
+                        spokenDetail = listOfNotNull(
+                            day,
+                            ListeningStatsMath.spokenDuration(entry.seconds)
+                        ).joinToString(", ")
+                    )
+                }
+            }
+            item { SupportingText("Includes listening on all your devices.") }
+        }
+        item {
+            NavigationChip(
+                "Refresh",
+                if (state.loading) "Loading…" else "Get the latest from your server",
+                Icons.Default.Refresh,
+                viewModel::refresh
+            )
+        }
+    }
+}
+
+/** The glance: today's listening as the one big number, with the streak beneath it. */
+@Composable
+private fun TodayHero(todaySeconds: Long, streakDays: Int) {
+    val spoken = buildString {
+        append("Today, ").append(ListeningStatsMath.spokenDuration(todaySeconds))
+        if (streakDays > 0) append(". ").append(streakDays).append(" day streak")
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .semantics(mergeDescendants = true) { contentDescription = spoken }
+    ) {
+        DurationText(
+            seconds = todaySeconds,
+            style = MaterialTheme.typography.numeralMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            "Today",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (streakDays > 0) {
+            Text(
+                if (streakDays == 1) "1-day streak" else "$streakDays-day streak",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+/**
+ * A compact duration with the digits in [style] and the unit letters at half size, so the
+ * number carries the weight ("3h 5m" reads as 3 and 5 at a glance).
+ */
+@Composable
+private fun DurationText(seconds: Long, style: androidx.compose.ui.text.TextStyle, color: Color) {
+    val text = ListeningStatsMath.duration(seconds)
+    val units = androidx.compose.ui.text.SpanStyle(fontSize = style.fontSize * 0.5f)
+    Text(
+        text = androidx.compose.ui.text.buildAnnotatedString {
+            text.forEach { char ->
+                if (char.isLetter()) {
+                    pushStyle(units)
+                    append(char)
+                    pop()
+                } else {
+                    append(char)
+                }
+            }
+        },
+        style = style,
+        color = color,
+        maxLines = 1
+    )
+}
+
+/** "Updated 5 min ago", or why it could not update; the age matters most when offline. */
+@Composable
+private fun FreshnessLine(loading: Boolean, error: String?, fetchedAt: Long?) {
+    val age = fetchedAt?.let { ListeningStatsMath.updatedAgo(it, System.currentTimeMillis()) }
+    val text = when {
+        loading -> "Updating…"
+        error != null && age != null -> "$error · updated $age"
+        error != null -> error
+        age != null -> "Updated $age"
+        else -> return
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (error != null && !loading) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+    )
+}
+
+/**
+ * A seven-day bar chart without axes, the shape Wear OS recommends for statistics: bars scale
+ * to the busiest day, today is drawn at full strength and labelled in the accent color, and
+ * empty days keep a stub so the week's rhythm stays readable.
+ */
+@Composable
+private fun WeekBars(days: List<DayTotal>, today: java.time.LocalDate) {
+    val max = days.maxOfOrNull { it.seconds }?.takeIf { it > 0 } ?: 1L
+    val description = days.joinToString(". ") {
+        "${it.date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())} " +
+            ListeningStatsMath.spokenDuration(it.seconds)
+    }
+    val accent = MaterialTheme.colorScheme.primary
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clearAndSetSemantics { contentDescription = "Last 7 days. $description" }
+    ) {
+        days.forEach { day ->
+            val isToday = day.date == today
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val fraction = day.seconds.toFloat() / max
+                Box(
+                    modifier = Modifier
+                        .width(WEEK_BAR_WIDTH)
+                        .height((WEEK_BAR_MAX_HEIGHT_DP * fraction).coerceAtLeast(3f).dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            when {
+                                day.seconds == 0L -> muted.copy(alpha = 0.3f)
+                                isToday -> accent
+                                else -> accent.copy(alpha = 0.6f)
+                            }
+                        )
+                )
+                Text(
+                    day.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isToday) accent else muted,
+                    fontWeight = if (isToday) FontWeight.Bold else null,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+private val WEEK_BAR_WIDTH = 12.dp
+private const val WEEK_BAR_MAX_HEIGHT_DP = 48f
+
+private data class StatFigure(val value: String, val caption: String, val spoken: String = value)
+
+@Composable
+private fun StatFigureRow(figures: List<StatFigure>) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+    ) {
+        figures.forEach { figure ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .weight(1f)
+                    .clearAndSetSemantics {
+                        contentDescription = "${figure.caption}, ${figure.spoken}"
+                    }
+            ) {
+                Text(
+                    figure.value,
+                    style = MaterialTheme.typography.numeralExtraSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Text(
+                    figure.caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
+                )
+            }
+        }
+    }
+}
+
+/** A title with one line of detail, centered for the round screen and not tappable. */
+@Composable
+private fun StatEntry(title: String, detail: String, spokenDetail: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .clearAndSetSemantics { contentDescription = "$title, $spokenDetail" }
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -2447,6 +2770,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
     val seriesView by viewModel.seriesView.collectAsStateWithLifecycle()
     val searchVisible by viewModel.homeSearchVisible.collectAsStateWithLifecycle()
     val podcastsVisible by viewModel.homePodcastsVisible.collectAsStateWithLifecycle()
+    val statsVisible by viewModel.homeStatsVisible.collectAsStateWithLifecycle()
     val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
     val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
     val formatDescriptions by viewModel.formatDescriptions.collectAsStateWithLifecycle()
@@ -2516,6 +2840,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
                 description = "Show the Podcasts entry on the main menu.",
                 checked = podcastsVisible,
                 onCheckedChange = viewModel::setHomePodcastsVisible
+            )
+        }
+        item {
+            SettingSwitch(
+                label = "Stats on main menu",
+                description = "Show Listening stats on the main menu. When off, stats are never requested from the server.",
+                checked = statsVisible,
+                onCheckedChange = viewModel::setHomeStatsVisible
             )
         }
         item { SupportingText("Show playback progress as") }

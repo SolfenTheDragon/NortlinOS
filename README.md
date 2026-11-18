@@ -55,6 +55,13 @@ phone at home, and pick up exactly where you left off on any device.
   Audiobookshelf's listening stats. If the watch and another
   device both moved on while out of touch, NortlinOS asks which position to keep instead of
   guessing.
+- **Check your listening stats.** **Listening stats** on the main menu opens on today's
+  listening time and your current streak, with a bar chart of the last 7 days underneath.
+  Scroll for all-time listening, days listened, finished books and episodes, your most-listened
+  titles and recent sessions. The figures come from your Audiobookshelf server and include every
+  device you listen on. They're loaded only when you open the screen, and the screen shows how
+  recent they are. If you go offline, the last figures loaded since the app started stay on
+  screen. Turn off **Stats on main menu** in Settings to hide the entry.
 - **See the cover in the watch's media controls**, so you can pause from anywhere.
 - **Show progress for the whole book or the current chapter** (Settings).
 - **Tailor the app to how you listen** (Settings): **Show series** opens libraries in the Series

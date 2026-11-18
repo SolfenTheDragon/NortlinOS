@@ -24,11 +24,13 @@ import com.nortlinos.wearos.presentation.screen.PlayerScreen
 import com.nortlinos.wearos.presentation.screen.RecentPlaybackScreen
 import com.nortlinos.wearos.presentation.screen.SearchScreen
 import com.nortlinos.wearos.presentation.screen.SettingsScreen
+import com.nortlinos.wearos.presentation.screen.StatsScreen
 import com.nortlinos.wearos.presentation.screen.ThemeScreen
 import com.nortlinos.wearos.presentation.viewmodel.LibraryViewModel
 import com.nortlinos.wearos.presentation.viewmodel.LoginViewModel
 import com.nortlinos.wearos.presentation.viewmodel.PlayerViewModel
 import com.nortlinos.wearos.presentation.viewmodel.SettingsViewModel
+import com.nortlinos.wearos.presentation.viewmodel.StatsViewModel
 import com.nortlinos.wearos.tile.TileLaunch
 
 private object Routes {
@@ -45,6 +47,7 @@ private object Routes {
     const val RECENT = "recent"
     const val SETTINGS = "settings"
     const val THEME = "theme"
+    const val STATS = "stats"
     fun items(id: String, origin: String) = "items/${Uri.encode(origin)}/$id"
     fun detail(id: String, origin: String) = "detail/${Uri.encode(origin)}/$id"
     fun episode(id: String, origin: String) = "episode/${Uri.encode(origin)}/$id"
@@ -117,6 +120,7 @@ fun AppNavHost(
                 onDownloaded = { nav.navigate(Routes.DOWNLOADED) },
                 onSearch = { nav.navigate(Routes.SEARCH) },
                 onRecent = { nav.navigate(Routes.RECENT) },
+                onStats = { nav.navigate(Routes.STATS) },
                 onNowPlaying = { nav.navigate(Routes.PLAYER) },
                 onSettings = { nav.navigate(Routes.SETTINGS) }
             )
@@ -211,6 +215,12 @@ fun AppNavHost(
         }
         composable(Routes.THEME) {
             ThemeScreen(settingsViewModel)
+        }
+        composable(Routes.STATS) {
+            // Scoped to this destination, so stats load when the screen opens and are dropped
+            // when it closes rather than lingering in memory.
+            val statsViewModel: StatsViewModel = hiltViewModel()
+            StatsScreen(statsViewModel)
         }
     }
     }

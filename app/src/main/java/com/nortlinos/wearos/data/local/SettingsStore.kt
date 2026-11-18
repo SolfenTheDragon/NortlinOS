@@ -103,6 +103,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val seriesViewKey = booleanPreferencesKey("library_series_view")
     private val homeSearchKey = booleanPreferencesKey("home_search_visible")
     private val homePodcastsKey = booleanPreferencesKey("home_podcasts_visible")
+    private val homeStatsKey = booleanPreferencesKey("home_stats_visible")
     private val headphoneCheckKey = booleanPreferencesKey("headphone_check")
     private val formatDescriptionsKey = booleanPreferencesKey("format_html_descriptions")
 
@@ -142,6 +143,18 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun setHomeSearchVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homeSearchKey] = visible }
+    }
+
+    /**
+     * Shows the Listening stats entry on the main menu. Defaults to on. Turning it off also means
+     * the app never requests stats from the server.
+     */
+    val homeStatsVisible: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[homeStatsKey] ?: true
+    }
+
+    suspend fun setHomeStatsVisible(visible: Boolean) {
+        context.settingsDataStore.edit { it[homeStatsKey] = visible }
     }
 
     /** Asks before starting playback with no headphones connected. Defaults to on. */

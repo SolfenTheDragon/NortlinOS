@@ -123,6 +123,13 @@ interface AudiobookshelfApi {
     @POST("api/session/local-all")
     suspend fun syncLocalSessions(@Body body: LocalSessionsRequest): Response<LocalSessionsResponse>
 
+    /**
+     * The user's listening statistics, aggregated by the server from every playback session the
+     * account has (all devices, not just this watch).
+     */
+    @GET("api/me/listening-stats")
+    suspend fun getListeningStats(): Response<ListeningStatsDto>
+
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
@@ -246,6 +253,42 @@ data class LocalSessionResult(
     val success: Boolean = false,
     val error: String? = null
 )
+/**
+ * `GET /api/me/listening-stats`. Times are seconds. `days` is keyed `YYYY-MM-DD` and `dayOfWeek`
+ * by English weekday name, both in the server's time zone. Every field is nullable because Gson
+ * leaves keys the server omits as null regardless of declared defaults.
+ */
+data class ListeningStatsDto(
+    val totalTime: Double? = null,
+    val today: Double? = null,
+    val days: Map<String, Double>? = null,
+    val dayOfWeek: Map<String, Double>? = null,
+    val items: Map<String, ListeningStatsItemDto>? = null,
+    val recentSessions: List<ListeningStatsSessionDto>? = null
+)
+data class ListeningStatsItemDto(
+    val id: String? = null,
+    val timeListening: Double? = null,
+    val mediaMetadata: StatsMetadataDto? = null
+)
+/** The subset of a book's or podcast's metadata the stats screen shows. */
+data class StatsMetadataDto(
+    val title: String? = null,
+    /** Podcasts carry a plain author string. */
+    val author: String? = null,
+    /** Books carry author objects. */
+    val authors: List<StatsNameDto>? = null
+)
+data class StatsNameDto(val name: String? = null)
+data class ListeningStatsSessionDto(
+    val id: String? = null,
+    val displayTitle: String? = null,
+    val displayAuthor: String? = null,
+    val timeListening: Double? = null,
+    val updatedAt: Long? = null,
+    val date: String? = null,
+    val mediaPlayer: String? = null
+)
 data class AllProgressResponse(val mediaProgress: List<MediaProgressDto> = emptyList())
 data class BookmarksResponse(val bookmarks: List<AudioBookmarkDto> = emptyList())
 data class SessionSyncRequest(
@@ -264,7 +307,8 @@ data class MediaProgressDto(
     val currentTime: Double = 0.0,
     val duration: Double = 0.0,
     val lastUpdate: Long = 0L,
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val isFinished: Boolean = false
 ) {
     val effectiveUpdatedAt: Long get() = maxOf(lastUpdate, updatedAt)
 }

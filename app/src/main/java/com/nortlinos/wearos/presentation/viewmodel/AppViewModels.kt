@@ -26,6 +26,9 @@ import com.nortlinos.wearos.data.repository.DownloadRepository
 import com.nortlinos.wearos.data.repository.LibraryRepository
 import com.nortlinos.wearos.data.repository.ProgressRepository
 import com.nortlinos.wearos.data.repository.SessionRepository
+import com.nortlinos.wearos.data.repository.NoNetworkException
+import com.nortlinos.wearos.data.repository.ListeningStatsSummary
+import com.nortlinos.wearos.data.repository.ListeningStatsRepository
 import com.nortlinos.wearos.data.repository.ServerIdentity
 import com.nortlinos.wearos.service.AudioOutputPolicy
 import com.nortlinos.wearos.service.AudioOutputs
@@ -1691,6 +1694,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val homePodcastsVisible = settingsStore.homePodcastsVisible
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val homeStatsVisible = settingsStore.homeStatsVisible
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val formatDescriptions = settingsStore.formatDescriptions
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val accentTheme = settingsStore.accentTheme
@@ -1732,5 +1737,62 @@ class SettingsViewModel @Inject constructor(
     fun setHomePodcastsVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomePodcastsVisible(visible) }
 
+    fun setHomeStatsVisible(visible: Boolean) =
+        viewModelScope.launch { settingsStore.setHomeStatsVisible(visible) }
+
     fun logout() = viewModelScope.launch { sessionRepository.signOut() }
+}
+
+data class StatsUiState(
+    val loading: Boolean = false,
+    val stats: ListeningStatsSummary? = null,
+    /** When [stats] was fetched from the server, for the "Updated …" line. */
+    val fetchedAt: Long? = null,
+    val error: String? = null
+)
+
+@HiltViewModel
+class StatsViewModel @Inject constructor(
+    private val statsRepository: ListeningStatsRepository
+) : ViewModel() {
+    private val _state = MutableStateFlow(
+        statsRepository.cached()?.let { StatsUiState(stats = it.summary, fetchedAt = it.fetchedAt) }
+            ?: StatsUiState()
+    )
+    val state = _state.asStateFlow()
+
+    init {
+        // Reopening the screen moments later shows the same figures without another request.
+        val fetchedAt = _state.value.fetchedAt
+        if (fetchedAt == null || System.currentTimeMillis() - fetchedAt !in 0 until FRESH_FOR_MS) {
+            refresh()
+        }
+    }
+
+    fun refresh() {
+        if (_state.value.loading) return
+        _state.value = _state.value.copy(loading = true, error = null)
+        viewModelScope.launch {
+            statsRepository.load().fold(
+                onSuccess = {
+                    _state.value = StatsUiState(stats = it.summary, fetchedAt = it.fetchedAt)
+                },
+                onFailure = { error ->
+                    // Keep the last figures on screen; the "Updated …" line shows their age.
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = if (error is NoNetworkException) {
+                            "Offline"
+                        } else {
+                            error.message ?: "Could not load stats"
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    private companion object {
+        const val FRESH_FOR_MS = 5 * 60 * 1000L
+    }
 }
