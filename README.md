@@ -282,6 +282,11 @@ certificates. It is `true` in this repository for development. Set it to `false`
 distribute; release builds of both APK types are produced by the release workflow in
 `.github/workflows/release.yml`.
 
+**Releases.** Pushing a tag such as `v1.2.3` builds and publishes a release. Its patch notes are
+written from the commits since the previous tag: commits starting with "Add" are listed under
+New, "Fix" under Fixes, and the rest under Improvements. Commits that only change tests, CI or
+documentation are left out, and so is any commit with `[skip notes]` in its message.
+
 Pull requests are welcome. Please open an issue first for larger changes, and run the unit tests
 before submitting.
 
