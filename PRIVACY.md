@@ -1,6 +1,6 @@
 # NortlinOS Privacy Policy
 
-**Last updated: October 11, 2026**
+**Last updated: November 18, 2026**
 
 NortlinOS is a Wear OS audiobook and podcast client for connecting to an Audiobookshelf server
 chosen by the user. The app is maintained by SolfenTheDragon. This policy describes information
@@ -25,7 +25,10 @@ preferences may be included in Android backup.
 The app uses this information only to sign in to the server you selected, display your library,
 stream or download media, and synchronize playback progress and bookmarks with that server.
 Credentials, tokens, library content, and playback data are sent to your selected Audiobookshelf
-server as needed for those features. During single sign-on, your server and the identity provider
+server as needed for those features. When playback or a download starts, the app also tells that
+server the watch's manufacturer, model, Android version, the NortlinOS version, and a random
+identifier created when the app is installed, so the server can label this watch in your
+listening sessions. The identifier is not derived from any hardware ID and is not backed up. During single sign-on, your server and the identity provider
 you configured handle the authentication flow.
 
 NortlinOS does not send this information to the app developer. The app contains no advertising,

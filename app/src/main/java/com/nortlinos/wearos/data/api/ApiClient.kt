@@ -1,5 +1,9 @@
 package com.nortlinos.wearos.data.api
 
+import android.content.Context
+import android.os.Build
+import com.nortlinos.wearos.BuildConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -8,13 +12,37 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ApiClient @Inject constructor(
-    private val httpClient: OkHttpClient
+    private val httpClient: OkHttpClient,
+    @ApplicationContext private val context: Context
 ) {
+    /**
+     * How this watch introduces itself when opening a playback session. The id is a random UUID
+     * kept for the life of the install, so the server's listening history groups this watch's
+     * sessions as one device without any hardware identifier leaving the watch.
+     */
+    val deviceInfo: DeviceInfoDto by lazy {
+        val prefs = context.getSharedPreferences(DEVICE_PREFS, Context.MODE_PRIVATE)
+        val id = prefs.getString(KEY_DEVICE_ID, null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString(KEY_DEVICE_ID, it).apply()
+        }
+        DeviceInfoDto(
+            deviceId = id,
+            clientName = CLIENT_NAME,
+            clientVersion = BuildConfig.VERSION_NAME,
+            manufacturer = Build.MANUFACTURER,
+            model = Build.MODEL,
+            sdkVersion = Build.VERSION.SDK_INT
+        )
+    }
+
+    fun playbackRequest(): PlaybackRequest = PlaybackRequest(deviceInfo = deviceInfo)
+
     private var cachedConfig: Pair<String, String?>? = null
     private var cachedApi: AudiobookshelfApi? = null
 
@@ -100,6 +128,10 @@ class ApiClient @Inject constructor(
     }
 
     companion object {
+        private const val CLIENT_NAME = "NortlinOS"
+        private const val DEVICE_PREFS = "device_identity"
+        private const val KEY_DEVICE_ID = "device_id"
+
         /** Builds the auth header value used for streaming/downloading raw audio & cover URLs. */
         fun authHeader(token: String?): Pair<String, String>? {
             if (token.isNullOrEmpty()) return null

@@ -1208,10 +1208,11 @@ class PlayerViewModel @Inject constructor(
                         }
                         val activeServer = sessionRepository.freshSession(server.url) ?: server
                         val api = apiClient.scopedApi(activeServer.url, activeServer.token)
+                        val request = apiClient.playbackRequest()
                         val response = runCatching {
                             cached.parentItemId?.let { podcastId ->
-                                api.startPodcastPlaybackSession(podcastId, itemId)
-                            } ?: api.startPlaybackSession(itemId)
+                                api.startPodcastPlaybackSession(podcastId, itemId, request)
+                            } ?: api.startPlaybackSession(itemId, request)
                         }.getOrNull()
                         val playback = response?.takeIf { it.isSuccessful }?.body()
                         if (playback == null) {

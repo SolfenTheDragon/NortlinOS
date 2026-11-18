@@ -110,6 +110,10 @@ interface AudiobookshelfApi {
         @Body body: SessionSyncRequest
     ): Response<Unit>
 
+    /** Closes a playback session that will not be synced (Audiobookshelf discards it unsaved). */
+    @POST("api/session/{id}/close")
+    suspend fun closeSession(@Path("id") sessionId: String): Response<ResponseBody>
+
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
@@ -164,6 +168,11 @@ data class SearchResponse(
 )
 data class SearchBookResult(val libraryItem: LibraryItem)
 data class PlaybackRequest(
+    /**
+     * Identifies the watch to the server. Without it Audiobookshelf derives a device from the
+     * user agent and IP, so listening sessions show up as an unnamed "okhttp" client.
+     */
+    val deviceInfo: DeviceInfoDto? = null,
     val forceDirectPlay: Boolean = true,
     val mediaPlayer: String = "wearos-app",
     val supportedMimeTypes: List<String> = listOf(
@@ -174,6 +183,15 @@ data class PlaybackRequest(
         "audio/flac",
         "audio/wav"
     )
+)
+/** The client-supplied half of Audiobookshelf's `DeviceInfo`; the server fills in the rest. */
+data class DeviceInfoDto(
+    val deviceId: String,
+    val clientName: String,
+    val clientVersion: String,
+    val manufacturer: String,
+    val model: String,
+    val sdkVersion: Int
 )
 data class SessionSyncRequest(
     val currentTime: Double,

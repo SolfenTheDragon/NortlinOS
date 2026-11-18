@@ -164,8 +164,12 @@ https://wear.googleapis.com/3p_auth/com.nortlinos.wearos
 If the watch itself has a browser, SSO also works there without that setting.
 
 You stay signed in. NortlinOS automatically restores your session when the watch reconnects to a
-network. On Audiobookshelf 2.26 and newer, it first renews expired sessions with the server; if
-needed, it can reauthenticate with the credentials from password sign-in.
+network. On Audiobookshelf 2.26 and newer, sign-in returns a refresh token and NortlinOS renews
+the one-hour access token by itself, including shortly before it would expire during a long
+stream or download. It only falls back to your saved password if the server refuses the refresh
+token (for example after 30 days offline). The watch shows up as **NortlinOS** with its model name
+in your listening sessions, and **Log out** also ends the session on the server (Audiobookshelf
+2.36+ lists active sessions on your account page).
 
 ## Listening offline
 

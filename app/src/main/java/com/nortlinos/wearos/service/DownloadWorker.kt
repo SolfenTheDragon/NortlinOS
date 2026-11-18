@@ -116,11 +116,16 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val apiClient = dependencies.apiClient()
         val active = sessions.freshSession(server.url) ?: server
         val api = apiClient.scopedApi(active.url, active.token)
+        val request = apiClient.playbackRequest()
         val session = item.parentItemId?.let { podcastId ->
-            api.startPodcastPlaybackSession(podcastId, itemId)
-        } ?: api.startPlaybackSession(itemId)
+            api.startPodcastPlaybackSession(podcastId, itemId, request)
+        } ?: api.startPlaybackSession(itemId, request)
         if (!session.isSuccessful) throw IOException("Playback session: HTTP ${session.code()}")
-        val tracks = session.body()?.audioTracks.orEmpty().sortedBy { it.index }
+        val playback = session.body()
+        // The session only exists to resolve track URLs. Close it right away so the server does
+        // not list a download as something this watch is currently playing.
+        playback?.id?.let { id -> runCatching { api.closeSession(id) } }
+        val tracks = playback?.audioTracks.orEmpty().sortedBy { it.index }
         if (tracks.isEmpty()) throw IOException("No audio tracks are available")
 
         val directory = File(existing.localDirectory).apply { mkdirs() }
