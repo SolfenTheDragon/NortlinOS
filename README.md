@@ -2,258 +2,336 @@
 
 # NortlinOS
 
-**Your Audiobookshelf library, on your wrist.**
+An audiobook and podcast player for Wear OS that connects to your own Audiobookshelf server.
 
-NortlinOS is an audiobook and podcast player for Wear OS watches that connects to your own
-[Audiobookshelf](https://www.audiobookshelf.org/) server. Download books to the watch, leave your
-phone at home, and pick up exactly where you left off on any device.
+[![Latest release](https://img.shields.io/github/v/release/SolfenTheDragon/NortlinOS?label=latest%20release)](https://github.com/SolfenTheDragon/NortlinOS/releases/latest)
+[![License: GPL v3](https://img.shields.io/github/license/SolfenTheDragon/NortlinOS)](LICENSE)
 
-## What you can do
+Download books and podcasts to your watch, leave your phone at home, and pick up where you left
+off on any device. NortlinOS works with [Audiobookshelf](https://www.audiobookshelf.org/), the
+self-hosted audiobook and podcast server.
 
-- **Browse and search your library** with the crown or a swipe. Books appear as cards with their
-  cover art. Switch to **Series** to group books together, search series by name, title, author, or
-  narrator, open a series, and queue all its books
-  for download at once. Books already downloaded or downloading are left alone.
-- **Podcasts have their own section** on the home screen, separate from your book library. Browse
-  podcast libraries and shows, then open an episode to play it or download it for offline
-  listening. Show and episode details are read from the on-watch library cache first and refreshed
-  from your server when connected. Podcast episodes have their own download and listening
-  progress, and use the same player controls as books: skip, chapter navigation when available,
-  playback speed, volume, and a sleep timer. Download or delete all episodes in a show together;
-  NortlinOS checks the watch's free space against Audiobookshelf's episode-size estimates and
-  warns before queueing if the show may not fit or some sizes are unknown.
-- **Download books to the watch** and listen with no phone or internet connection. Press and hold
-  a book's tile in a library, series, or search list to start (or pause) its download right there,
-  or open the book's page for full download controls. Downloads can be paused, resumed, cancelled,
-  or deleted, and an interrupted download continues where it stopped.
-- **Stream** books you haven't downloaded when the watch is online.
-- **Recent books.** The main menu lists your 10 most recently played unfinished books. Tap one to
-  open its book page, where you can play it or download it first.
-  A **Now playing** shortcut sits at the top of the main menu while a book is loaded.
-- **Add the Now playing tile** (swipe left from the watch face to the end of your tiles, tap **+**,
-  and pick NortlinOS *Now playing*).
-  It shows your current book over its cover and how much is left. While a book plays, **Pause**
-  stops it right from the tile; when paused, **Resume** opens the player and carries on (so
-  NortlinOS can check for headphones first).
-- **No accidental speaker playback.** If you press play without headphones connected, NortlinOS
-  asks first: tap **Connect headphones** to open the watch's audio output screen (playback starts
-  by itself once they connect), or **Use watch speaker** if your watch has one.
-- **Control playback** from a simple player: play/pause and 30-second skip back/forward. Turn the
-  **crown to change the volume**. On round watches a ring around the edge shows how far through
-  the book you are, with a small gap between chapters.
-- **Swipe left on the player** for extra tools (the dots at the bottom show which page you're on):
-  - previous/next chapter, or All chapters to jump straight to any chapter;
-  - a sleep timer (any length up to 12 hours);
-  - playback speed;
-  - headphone check (ask before playing on the speaker; on by default);
-  - format descriptions (render HTML in book/podcast descriptions);
-  - **Bookmark this spot** to save the current position (books only), then **View bookmarks** to
-    jump back to any saved spot or hold one to remove it.
-- **Keep your place everywhere.** Book and podcast episode progress syncs with your server
-  automatically, so the phone app, the web player and the watch agree. Time spent listening on
-  the watch, including offline with downloads, is sent as listening sessions, so it counts in
-  Audiobookshelf's listening stats. If the watch and another
-  device both moved on while out of touch, NortlinOS asks which position to keep instead of
-  guessing.
-- **Use your watch's extra buttons** (Settings → **Hardware buttons**, shown only on watches
-  that have buttons besides the power button). Give each one an action: play/pause, back or
-  forward 30 seconds, previous or next chapter, bookmark this spot, or open the player. The
-  buttons do this while NortlinOS is open; elsewhere they keep their usual function. A short
-  buzz confirms each press, and a different buzz means no book is loaded. Pressing play/pause
-  with a book paused opens the player first, so the headphone check can ask before it starts.
-- **Check your listening stats.** **Listening stats** on the main menu opens on today's
-  listening time and your current streak, with a bar chart of the last 7 days underneath.
-  Scroll for all-time listening, days listened, finished books and episodes, your most-listened
-  titles and recent sessions. The figures come from your Audiobookshelf server and include every
-  device you listen on. They're loaded only when you open the screen, and the screen shows how
-  recent they are. If you go offline, the last figures loaded since the app started stay on
-  screen. Turn off **Stats on main menu** in Settings to hide the entry.
-- **See the cover in the watch's media controls**, so you can pause from anywhere.
-- **Show progress for the whole book or the current chapter** (Settings).
-- **Tailor the app to how you listen** (Settings): **Show series** opens libraries in the Series
-  view every time, and **Search on main menu** hides the Search entry if you never use it. **Theme** (its own page) picks the accent color from presets or a custom HTML color such as `#FF8800`, and
-  **Pre-cache libraries** (off by default) loads library listings in the background after you
-  connect, at the cost of extra battery and data.
-- **Keep listening after signing out.** *Listen offline* on the sign-in screen opens your
-  downloads without an account.
-
-## Podcasts
-
-Tap **Podcasts** on the home screen to browse podcast libraries and shows separately from your
-books. Open a show to browse its episodes.
-
-On a show's episode list, each episode is a single tile:
-
-- **Tap an episode** to open its episode page: description, **Play or resume**, and full download
-  controls (download, pause, resume, cancel, or delete).
-- **Press and hold an episode** to start downloading it right from the list, without leaving the
-  list — no need to open the episode first. Holding again while it's downloading pauses it. Holding
-  an episode that's already downloaded does nothing there; manage or delete it from the episode
-  page instead.
-- **The tile's color shows its download state at a glance:** dark gray with white text and an
-  orange download icon means the episode isn't downloaded yet (or is queued, downloading, paused,
-  or failed); orange with black text and a green check means it's downloaded and ready to play
-  offline.
-
-Playback uses the same player controls as books, including skip controls, playback speed, volume,
-and the sleep timer. Episode listening progress syncs independently with Audiobookshelf.
-
-Show details and episode lists are cached on the watch and can be browsed offline after they have
-been loaded once while connected. To listen offline, download each episode first; streaming an
-episode does not save its audio automatically. On a show's page, **Download all episodes** queues
-the episodes that are not already downloaded or in progress. Before queueing, NortlinOS compares
-estimated episode sizes with free watch storage and warns if the series may not fit or any episode
-size is unknown. You can continue anyway if you choose. **Delete all episode downloads** removes
-the downloaded episodes for that show from the watch.
-
-### Screenshots
+- **Listen without your phone.** Downloads play with no phone or internet connection.
+- **Stay in sync.** Your place, bookmarks and listening time sync with Audiobookshelf, so the
+  watch, the phone app and the web player agree.
+- **Built for the wrist.** Big controls, crown volume, a Now playing tile, and a check that stops
+  audio from playing out loud when headphones aren't connected.
+- **Light on battery.** Designed for long listening sessions, especially with downloaded books.
 
 <table>
   <tr>
-    <td align="center"><img src="resources/Signed%20In%20Menu.png" alt="NortlinOS home menu" width="190" /><br />Home menu and connection status</td>
-    <td align="center"><img src="resources/Signed%20In%20Menu%20Continued.png" alt="NortlinOS home menu continued" width="190" /><br />More home menu options</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="resources/ServerList.png" alt="Audiobookshelf library books" width="190" /><br />Search and browse a library</td>
-    <td align="center"><img src="resources/Book%20Menu.png" alt="Audiobook details and playback options" width="190" /><br />Book details and playback options</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="resources/Book%20Menu%20Continued.png" alt="Audiobook download and description" width="190" /><br />Download and book description</td>
-    <td align="center"><img src="resources/Playback%20Menu.png" alt="NortlinOS audiobook player" width="190" /><br />Player controls and book progress</td>
+    <td align="center"><img src="resources/Signed%20In%20Menu.png" alt="Screenshot of the NortlinOS main menu with connection status" width="190" /><br />Main menu</td>
+    <td align="center"><img src="resources/Book%20Menu.png" alt="Screenshot of a book page with play and download options" width="190" /><br />Book page</td>
+    <td align="center"><img src="resources/Playback%20Menu.png" alt="Screenshot of the player with skip controls and a progress ring" width="190" /><br />Player</td>
   </tr>
 </table>
 
+## Contents
+
+- [Requirements](#requirements)
+- [Install](#install)
+- [Get started](#get-started)
+- [How to](#how-to)
+- [Controls and gestures](#controls-and-gestures)
+- [Settings](#settings)
+- [How syncing works](#how-syncing-works)
+- [Battery](#battery)
+- [Troubleshooting](#troubleshooting)
+- [Get help](#get-help)
+- [Privacy](#privacy)
+- [For developers](#for-developers)
+- [Roadmap](#roadmap)
+- [License](#license)
+
 ## Requirements
 
-- A watch running **Wear OS 4 or newer** (for example Pixel Watch 2+, Galaxy Watch 6+).
-- An **Audiobookshelf server** you can reach from the watch, on your home network or the internet.
-  Tested against the API of Audiobookshelf **2.38**; 2.26 or newer is recommended. Older servers
-  still work, with the fallbacks noted under *Signing in*.
-- **Bluetooth headphones** are recommended. The watch speaker works if your watch has one.
+- A watch running **Wear OS 4 or newer**, for example a Pixel Watch 2 or Galaxy Watch 6 or later.
+- An **Audiobookshelf server** the watch can reach, on your home network or the internet.
+  Version 2.26 or newer is recommended; NortlinOS is tested with 2.38.
+- **Bluetooth headphones**, recommended. The watch speaker works too, if your watch has one.
 
-## Installing
+## Install
 
-NortlinOS isn't on the Play Store yet. It's installed from a file:
+NortlinOS isn't on the Play Store yet, so you install it from a file with a computer.
 
-1. Download the latest `NortlinOS-x.y.z.apk` from this repository's **Releases** page.
-2. On the watch, enable **Developer options** (Settings → System → About → tap *Build number*
-   seven times). Then turn on **ADB debugging** and **Debug over Wi-Fi** (or **Wireless
-   debugging**).
-3. On a computer with [Android platform tools](https://developer.android.com/tools/releases/platform-tools)
-   on the same Wi-Fi network, connect to the address the watch shows, then install:
+1. Download an APK from the [latest NortlinOS release](https://github.com/SolfenTheDragon/NortlinOS/releases/latest).
+   Choose one:
+   - **`NortlinOS-x.y.z.apk`**: for servers with an `https://` address. Pick this one if you're
+     not sure.
+   - **`NortlinOS-x.y.z-insecure.apk`**: also connects to `http://` addresses and servers with
+     self-signed certificates. Your password and listening are not protected from anyone else
+     on the network, so only use it on a network you trust.
+2. On the watch, turn on **Developer options**: go to **Settings → System → About** and tap
+   **Build number** seven times.
+3. In **Developer options**, turn on **ADB debugging** and **Debug over Wi-Fi** (on some watches
+   this is called **Wireless debugging**). The watch shows an address such as `192.168.1.20:5555`.
+4. On a computer on the same Wi-Fi network, install the
+   [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools), then
+   run:
 
    ```bash
-   adb connect <watch-ip>:<port>      # newer watches: run `adb pair` first
+   adb connect 192.168.1.20:5555
    adb install -r NortlinOS-x.y.z.apk
    ```
 
-To update, repeat step 3 with the new file. `-r` keeps your sign-in, downloads and progress.
+   Use the address your watch shows. On newer watches, run `adb pair` first, as the watch
+   explains when you open **Wireless debugging**.
 
-## Signing in
+**To update**, download the new APK and repeat step 4. Your sign-in, downloads and progress are
+kept. You can switch between the two APK types the same way.
 
-**You must sign in seperately from the app on your phone, they do not share login information**
+## Get started
 
-<p align="center">
-  <img src="resources/Main%20Menu.png" alt="NortlinOS sign-in form" width="220" />
-</p>
+<img src="resources/Main%20Menu.png" alt="Screenshot of the NortlinOS sign-in screen" width="200" align="right" />
 
-1. Open NortlinOS and enter your **HTTPS server address**, e.g.
-   `https://abs.example.com` or `https://audiobooks.example.net`. If you leave out `https://`,
-   NortlinOS adds it. HTTP addresses are not accepted because they would send your password and
-   session over an unencrypted connection. Your server must have a certificate trusted by the
-   watch; self-signed or otherwise untrusted certificates are rejected.
-   *Development builds* (`nortlinos.allowInsecureServers=true` in `gradle.properties`, the
-   default in this repo) also accept `http://` addresses and self-signed certificates, with no
-   protection against interception. Set it to `false` for release/Play Store builds.
-2. Enter your **username and password** and tap **Sign in**.
+1. Open NortlinOS on the watch.
+2. Enter your server address, for example `https://abs.example.com`. If you leave out
+   `https://`, NortlinOS adds it.
+3. Enter your Audiobookshelf **username and password**, and tap **Sign in**.
+4. Tap **Server library**, pick a book, and tap **Play or resume** to stream it, or
+   **Download for offline** to save it to the watch.
 
-**Single sign-on (SSO):** if your server has OpenID Connect enabled, a sign-in button for it
-appears as soon as you enter the address. The sign-in page opens on your **paired phone**.
-For that to work, your server administrator needs to add this address under **Settings →
-Authentication → Allowed Mobile Redirect URIs** in Audiobookshelf:
+The watch signs in separately from the Audiobookshelf app on your phone; signing in on one
+doesn't sign in the other. Once signed in, you stay signed in.
+
+**Sign in with single sign-on (SSO).** If your server uses OpenID Connect, a sign-in button for
+it appears after you enter the address. The sign-in page opens on your paired phone. For this to
+work, your server administrator must add this address in Audiobookshelf under **Settings →
+Authentication → Allowed Mobile Redirect URIs**:
 
 ```
 https://wear.googleapis.com/3p_auth/com.nortlinos.wearos
 ```
 
-If the watch itself has a browser, SSO also works there without that setting.
+If your watch has its own browser, SSO also works there without that setting.
 
-You stay signed in. NortlinOS automatically restores your session when the watch reconnects to a
-network. On Audiobookshelf 2.26 and newer, sign-in returns a refresh token and NortlinOS renews
-the one-hour access token by itself, including shortly before it would expire during a long
-stream or download. It only falls back to your saved password if the server refuses the refresh
-token (for example after 30 days offline). The watch shows up as **NortlinOS** with its model name
-in your listening sessions, and **Log out** also ends the session on the server (Audiobookshelf
-2.36+ lists active sessions on your account page).
+**No account?** Tap **Listen offline** on the sign-in screen to play the downloads already on
+the watch.
 
-## Listening offline
+<br clear="right" />
 
-Open a book and tap **Download for offline**, or tap **Download for offline** under an episode in
-the Podcasts section. Audio and available cover art are saved on the watch; show and episode
-details remain in the library cache. If you stay on a book's page, a full-screen check mark tells you when its download finishes
-(or fails, or is deleted). **Downloaded** on the main menu lists content stored on the watch, and
-Settings shows how much space downloads use and how much is free. Downloads use Wi-Fi or your
-phone's connection and continue in the background.
+## How to
 
-Podcast shows and episode details that have been loaded from the server stay cached for offline
-browsing. To listen offline, download each episode first; a streamed episode is not automatically
-saved. Completed episode downloads play without a server connection, and each episode keeps its
-own resume position.
+### Find something to listen to
 
-Progress you make offline is saved on the watch and sent to your server the next time the watch
-is connected, either via Wi-Fi or through your phone's connection.
+- **Recent books** on the main menu lists your 10 most recently played unfinished books.
+- **Server library** lists your books as cards with their covers. Scroll with the crown or a
+  swipe. Turn on **Show series** in Settings to group books into series; from a series you can
+  download all its books at once.
+- **Search** finds books by title, author, narrator or series.
+- **Podcasts** lists your podcast libraries and shows. Open a show to see its episodes.
 
-<p align="center">
-  <img src="resources/Downloaded.png" alt="Downloaded books on the watch" width="220" />
-</p>
+### Download for offline listening
+
+- **One book or episode:** open it and tap **Download for offline**. Or, in any list, press and
+  hold its tile to start the download without leaving the list. Hold again to pause it.
+- **A whole podcast show:** open the show and tap **Download all episodes**. NortlinOS checks
+  the watch's free space first and warns you if the episodes might not fit.
+- **Manage downloads:** **Downloaded** on the main menu lists everything stored on the watch. Open
+  an item to pause, resume, cancel or delete its download. Settings shows how much space
+  downloads use.
+
+Downloads continue in the background and resume where they stopped if interrupted. Downloaded
+items show a check mark in lists.
+
+### Play and control a book
+
+- Tap **Play or resume**. If no headphones are connected, NortlinOS asks first: tap **Connect headphones**
+  to open the watch's audio output screen (playback starts once they connect), or **Use watch
+  speaker**.
+- Skip back or forward 30 seconds, and turn the crown to change the volume. On round watches, the
+  ring around the edge shows your progress through the book, with a small gap between chapters.
+- Swipe left on the player for **Playback tools**: previous or next chapter, **All chapters**,
+  the sleep timer (up to 12 hours), playback speed, and bookmarks. Swipe right to go back.
+- While a book is loaded, **Now playing** appears at the top of the main menu.
+
+### Save your place with a bookmark
+
+On the player, swipe left and tap **Bookmark this spot**. **View bookmarks** lists them: tap one
+to jump to it, or press and hold to remove it. Bookmarks sync with Audiobookshelf. Bookmarks are
+available for books, not podcast episodes.
+
+### Use the Now playing tile
+
+Swipe left from the watch face to the end of your tiles, tap **+**, and choose **NortlinOS Now
+playing**. The tile shows the current book and how much is left. Tap **Pause** to stop playback
+from the tile, or **Resume** to open the player and carry on.
+
+### Check your listening stats
+
+Tap **Listening stats** on the main menu. It opens on today's listening time and your current
+streak, with a chart of the last 7 days. Scroll down for all-time listening, days listened,
+finished books and episodes, your most-listened titles, and recent sessions. The figures come from
+your server and include every device you listen on.
+
+### Set up your watch's extra buttons
+
+If your watch has buttons besides the power button, go to **Settings → Hardware buttons** and
+choose an action for each: play or pause, back or forward 30 seconds, previous or next chapter,
+bookmark this spot, or open the player. The buttons do this while NortlinOS is open; elsewhere
+they keep their usual function. The watch buzzes to confirm each press, with a different buzz if
+no book is loaded.
+
+## Controls and gestures
+
+| Where | Action | What it does |
+|---|---|---|
+| Any screen | Swipe right | Go back |
+| Lists | Turn the crown or swipe | Scroll |
+| Book, series or episode lists | Press and hold a tile | Start or pause its download |
+| Bookmarks list | Press and hold a bookmark | Remove it |
+| Player | Turn the crown | Change the volume |
+| Player | Swipe left | Open playback tools |
+| Playback tools | Swipe right | Return to the player |
+| Sleep timer | Turn the crown | Choose the timer length |
+| Now playing tile | Tap **Pause** or **Resume** | Pause, or open the player and resume |
+| Extra hardware buttons | Press | The action you chose in Settings |
+
+## Settings
+
+| Setting | What it does | Default |
+|---|---|---|
+| Theme | Accent color, from presets or any HTML color such as `#FF8800` | Amber |
+| Hardware buttons | Actions for your watch's extra buttons (only on watches that have them) | Watch default |
+| Show series | Open libraries grouped into series | Off |
+| Pre-cache libraries | Load library listings in the background after connecting. Uses more battery and data | Off |
+| Headphone check | Ask before playing through the watch speaker | On |
+| Format descriptions | Show book and podcast descriptions as formatted text | On |
+| Search on main menu | Show **Search** on the main menu | On |
+| Podcasts on main menu | Show **Podcasts** on the main menu | On |
+| Stats on main menu | Show **Listening stats** on the main menu. When off, stats are never loaded | On |
+| Show playback progress as | Progress for the **Whole book** or the **Current chapter** | Whole book |
+| Log out | Sign out of your server. Downloads and progress stay on the watch | — |
+
+## How syncing works
+
+- **Your place** in each book and episode syncs with your server whenever the watch is connected,
+  over Wi-Fi or through your phone. Listening you do offline is sent the next time it connects.
+- **If two devices disagree**, for example you listened on the watch offline and on your phone
+  meanwhile, NortlinOS shows **Progress differs** and asks which position to keep.
+- **Listening time** on the watch, including offline listening, is sent to your server as
+  listening sessions, so it counts in Audiobookshelf's stats. The watch appears there as
+  **NortlinOS** with its model name.
+- **Your sign-in** renews itself in the background, so you aren't asked to sign in again. On
+  Audiobookshelf 2.36 and newer, the watch is listed under your account's active sessions, and
+  **Log out** ends that session on the server too.
 
 ## Battery
 
-NortlinOS is built to be light on battery during long listening sessions:
+NortlinOS is designed to be light on battery during long listening sessions:
 
-- When the watch has no connection, it doesn't try to reach the server.
-- Streaming fetches audio a few minutes ahead in large bursts so the radio can switch off in between.
-- Where the watch supports it, audio decoding is handed to dedicated low-power hardware.
-- Nothing updates on screen while the screen is off. In always-on mode the player turns
-  almost entirely black.
-- Covers are downloaded once at watch size and then reused.
-- The tile only updates when you play or pause; it never wakes the watch on a schedule.
+- It doesn't try to reach the server when the watch has no connection.
+- Streaming fetches audio a few minutes ahead in bursts, so the radio can switch off in between.
+- Where the watch supports it, audio decoding runs on dedicated low-power hardware.
+- Nothing updates on screen while the screen is off, and in always-on mode the player turns almost
+  entirely black.
+- Covers are downloaded once at watch size and reused.
+- The tile only updates when you play or pause.
 
-For the longest battery life, download books and podcast episodes ahead of time instead of
-streaming them.
+For the longest battery life, download books and episodes before you listen instead of streaming
+them.
 
 ## Troubleshooting
 
-| Problem | Try |
+| Problem | Try this |
 |---|---|
-| "Offline", "No network connection" or "Unable to connect" | Check the watch is on Wi-Fi or connected to your phone, and that the address works from a phone on the same network. |
-| A podcast show has no episodes while offline | Open the show while connected first so its episode list can be cached. Download episodes you want to listen to offline. |
-| SSO button doesn't appear | OpenID Connect isn't enabled on the server. Use your username and password. |
-| SSO opens but never returns | Ask your admin to add the redirect address above to the server's allow list. |
-| A book or podcast episode won't play | If it isn't downloaded, the watch needs a connection to stream it. |
-| A cover changed on the server but not on the watch | Covers are cached. Clear the app's cache in the watch's settings. |
-| "Progress differs" appears | Another device saved newer progress while the watch had unsynced listening. Pick the position you want to keep. |
-| No sound | Connect Bluetooth headphones, or turn the crown on the player to raise the volume. If you chose *Use watch speaker*, that choice lasts until NortlinOS is closed. |
-| "No headphones" appears even though they're paired | Make sure they are turned on and connected to the watch (not only to your phone), then tap **Connect headphones**. |
-| The tile says "Start a book to resume it from here" | Play any book once; the tile remembers it from then on. |
+| **Offline**, **No network connection** or **Unable to connect** | Check the watch is on Wi-Fi or connected to your phone, and that the server address works from your phone on the same network. |
+| The server address is rejected | Use an `https://` address with a valid certificate, or install the insecure APK (see [Install](#install)). |
+| The SSO button doesn't appear | Your server doesn't have OpenID Connect turned on. Sign in with your username and password. |
+| SSO opens but never finishes | Ask your server administrator to add the redirect address from [Get started](#get-started). |
+| A book or episode won't play | If it isn't downloaded, the watch needs a connection to stream it. |
+| A podcast show has no episodes offline | Open the show once while connected so its episode list is saved, and download the episodes you want. |
+| No sound | Connect Bluetooth headphones, or turn the crown on the player to raise the volume. If you chose **Use watch speaker**, that lasts until NortlinOS is closed. |
+| **No headphones** appears even though they're paired | Make sure they're on and connected to the watch, not only to your phone, then tap **Connect headphones**. |
+| **Progress differs** appears | Another device saved newer progress while the watch had unsynced listening. Pick the position to keep. |
+| A cover changed on the server but not on the watch | Covers are saved on the watch. Clear NortlinOS's cache in the watch's settings. |
+| The tile says **Start a book to resume it from here** | Play any book once. The tile remembers it from then on. |
+| **Hardware buttons** is missing from Settings | Your watch has no buttons that apps can use. |
+| Listening stats show the wrong day | Stats are grouped by date on your server. If your server's time zone differs from yours, late-night listening can appear on the next or previous day. |
 
-## Roadmap
+## Get help
 
-Improvements being worked on:
+- **Found a bug or have an idea?** [Open an issue on GitHub](https://github.com/SolfenTheDragon/NortlinOS/issues).
+  Include your watch model, your Wear OS version, the NortlinOS version (shown on the
+  [releases page](https://github.com/SolfenTheDragon/NortlinOS/releases)), and your
+  Audiobookshelf version.
+- **Questions about your server**, such as accounts, libraries or SSO setup, are best answered by
+  your server administrator or the [Audiobookshelf documentation](https://www.audiobookshelf.org/docs).
 
-- Power efficiency improvements
-- UI smoothness updates
-- Updates to the harness to help handle future Audiobookshelf API updates gracefully
+Never post passwords, server addresses you want to keep private, or session tokens in an issue.
 
 ## Privacy
 
-Read the [NortlinOS Privacy Policy](PRIVACY.md). It is also available from the sign-in screen and
-Settings in the app. In short, NortlinOS sends your sign-in and library/playback requests only to
-the HTTPS Audiobookshelf server you choose; it has no advertising, analytics, or crash-reporting
-service. The privacy policy URL for the Play Store listing is:
+NortlinOS sends your sign-in, library and listening data only to the Audiobookshelf server you
+choose. It has no advertising, analytics or crash reporting. Read the full
+[NortlinOS privacy policy](PRIVACY.md), which you can also open from the sign-in screen and
+Settings.
 
-<https://github.com/SolfenTheDragon/NortlinOS/blob/main/PRIVACY.md>
+## For developers
+
+NortlinOS is a Kotlin and Jetpack Compose for Wear OS app built with Gradle:
+
+```bash
+./gradlew test             # unit tests
+./gradlew assembleDebug    # debug APK in app/build/outputs/apk/debug
+```
+
+**HTTP and self-signed servers.** The `nortlinos.allowInsecureServers` switch in
+`gradle.properties` controls whether the app accepts `http://` addresses and untrusted
+certificates. It is `true` in this repository for development. Set it to `false` for builds you
+distribute; release builds of both APK types are produced by the release workflow in
+`.github/workflows/release.yml`.
+
+Pull requests are welcome. Please open an issue first for larger changes, and run the unit tests
+before submitting.
+
+## Roadmap
+
+Planned improvements. These aren't in the app yet.
+
+### Listening
+
+- **Sleep timer until the end of the chapter**, and a shake of the wrist to add more time.
+- **Skip silence and voice boost** for clearer, shorter listening.
+- **Choose the skip length**: 10, 15, 30 or 60 seconds. Press and hold to skip a whole chapter.
+- **Mark a book or episode as finished**, or not finished, from the watch.
+
+### Library and podcasts
+
+- **Collections and playlists** from your Audiobookshelf server.
+- **Continue listening from your server**, so a book you started on another device shows up on
+  the watch straight away.
+- **Automatic podcast downloads**: keep the newest episodes of a show on the watch and remove
+  ones you've finished.
+- **Remove finished downloads automatically** to free up storage.
+- **Download only on Wi-Fi**, a setting you can turn on or off. When it's on, downloads wait for
+  Wi-Fi instead of using your phone's connection.
+
+### On your watch
+
+- **A watch face complication** showing the time left in your book or today's listening.
+- **Resume from the watch's media controls** when your headphones connect, without opening the
+  app.
+- **Support for Wear OS 7**, including Live Updates and Wear Widgets.
+- **Swipe a list item to reveal actions**, such as deleting a download or bookmark, and a
+  one-time hint that pressing and holding a tile downloads it.
+
+### Sync and accounts
+
+- **Instant progress updates**: moving forward on your phone updates the watch right away.
+- **Multiple servers or accounts**, with quick switching.
+- **Listening stats in your server's time zone**, so late-night listening lands on the right day.
+- **Listening stats available offline**, even after the app restarts.
+- **Support for Audiobookshelf version 3** when it's released.
+
+### Availability and quality
+
+- **NortlinOS on the Google Play Store.**
+- **Translations** into other languages.
+- **Automated screen tests** on small and large watches, which also keep the screenshots here up
+  to date.
 
 ## License
 
-NortlinOS is released under the terms of the [license](LICENSE) included in this repository.
+NortlinOS is free software, released under the
+[GNU General Public License v3.0](LICENSE).
