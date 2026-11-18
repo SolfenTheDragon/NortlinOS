@@ -17,8 +17,24 @@ import retrofit2.http.Query
 import retrofit2.http.QueryMap
 
 interface AudiobookshelfApi {
+    /**
+     * Password sign-in. Audiobookshelf 2.26+ only puts the refresh token in the response body when
+     * the client sends `x-return-tokens: true`; without it the token goes into a browser cookie
+     * this client never keeps, and the session cannot be renewed once the 1-hour access token
+     * expires.
+     */
     @POST("login")
-    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
+    suspend fun login(
+        @Body body: LoginRequest,
+        @Header("x-return-tokens") returnTokens: String = "true"
+    ): Response<LoginResponse>
+
+    /**
+     * Ends this device's server-side auth session (Audiobookshelf 2.26+), so it no longer appears
+     * under the account's active sessions and its refresh token stops working.
+     */
+    @POST("logout")
+    suspend fun logout(@Header("x-refresh-token") refreshToken: String): Response<ResponseBody>
 
     /** Unauthenticated capability probe; reports which auth methods the server has enabled. */
     @GET("status")

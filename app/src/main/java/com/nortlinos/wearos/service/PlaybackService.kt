@@ -78,11 +78,16 @@ class PlaybackService : MediaSessionService() {
         val dataSource = ResolvingDataSource.Factory(
             DefaultDataSource.Factory(this, http)
         ) { dataSpec ->
-            val activeServer = sessionRepository.session.value
-            val activeBaseUrl = activeServer?.url?.let(ServerIdentity::normalize)
-            if (activeServer != null && activeBaseUrl != null &&
+            val signedIn = sessionRepository.session.value
+            val activeBaseUrl = signedIn?.url?.let(ServerIdentity::normalize)
+            if (signedIn != null && activeBaseUrl != null &&
                 dataSpec.uri.toString().startsWith("$activeBaseUrl/")
             ) {
+                // Resolution runs on ExoPlayer's loader thread, never the main thread, so it may
+                // block briefly to renew an access token that would lapse mid-stream (they last
+                // one hour on Audiobookshelf 2.26+, far shorter than most audiobooks).
+                val activeServer = runBlocking { sessionRepository.freshSession(signedIn.url) }
+                    ?: signedIn
                 val authHeader = ApiClient.authHeader(activeServer.token)
                     ?: return@Factory dataSpec
                 dataSpec.buildUpon()

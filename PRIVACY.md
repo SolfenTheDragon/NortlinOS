@@ -40,7 +40,8 @@ accept HTTP and untrusted certificates and are not intended for distribution.
 
 ## Retention and deletion
 
-Use **Log out** to remove the saved server session and password login from the watch. This does
+Use **Log out** to remove the saved server session and password login from the watch. When the
+watch is online, logging out also asks the server to end that session. This does
 not delete downloaded books, cached library data, or locally saved playback progress. Delete
 downloads from the app to remove downloaded media. Android removes app-private data when NortlinOS
 is uninstalled.

@@ -112,6 +112,8 @@ the downloaded episodes for that show from the watch.
 
 - A watch running **Wear OS 4 or newer** (for example Pixel Watch 2+, Galaxy Watch 6+).
 - An **Audiobookshelf server** you can reach from the watch, on your home network or the internet.
+  Tested against the API of Audiobookshelf **2.38**; 2.26 or newer is recommended. Older servers
+  still work, with the fallbacks noted under *Signing in*.
 - **Bluetooth headphones** are recommended. The watch speaker works if your watch has one.
 
 ## Installing

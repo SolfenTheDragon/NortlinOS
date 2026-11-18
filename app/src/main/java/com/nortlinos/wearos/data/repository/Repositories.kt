@@ -338,6 +338,43 @@ class SessionRepository @Inject constructor(
     }
 
     /**
+     * User-initiated sign-out. Besides forgetting the session locally, it asks the server to end
+     * it: Audiobookshelf 2.36+ lists every live session on the account page, and a refresh token
+     * left behind would stay valid for up to 30 days. Revocation is best-effort — signing out
+     * offline still signs out, and the server's own expiry then cleans up.
+     */
+    suspend fun signOut() {
+        val server = _session.value
+        logout()
+        sessionStore.clearLogin()
+        if (server == null) return
+        val refreshToken = server.refreshToken?.takeIf { it.isNotBlank() } ?: return
+        if (!connectivityMonitor.hasActiveNetwork()) return
+        withContext(Dispatchers.IO) {
+            runCatching { apiClient.newAuthSession(server.url).logout(refreshToken) }
+        }
+    }
+
+    /**
+     * The current session for [serverUrl], renewed first if its access token is about to expire.
+     *
+     * Retrofit callers recover from a `401` after the fact, but raw media requests (ExoPlayer
+     * streaming, downloads) cannot replay a half-read body, so they ask for a token that is still
+     * good before they start. Returns null when signed out or signed in to a different server;
+     * if renewal is impossible right now (offline) the current, possibly stale, session is
+     * returned and the request's own `401` handling takes over.
+     */
+    suspend fun freshSession(serverUrl: String): Server? {
+        val current = _session.value?.takeIf { ServerIdentity.matches(it.url, serverUrl) }
+            ?: return null
+        if (!AccessTokenExpiry.needsRefresh(current.token, System.currentTimeMillis())) return current
+        if (current.refreshToken.isNullOrBlank() && sessionStore.getLogin() == null) return current
+        if (!connectivityMonitor.hasActiveNetwork()) return current
+        recoverFromUnauthorized(current.url, current.token)
+        return _session.value?.takeIf { ServerIdentity.matches(it.url, serverUrl) }
+    }
+
+    /**
      * Handles a `401`/`403` for the given session.
      *
      * Audiobookshelf 2.26+ issues access tokens that expire after an hour, so an unauthorized
@@ -1191,6 +1228,32 @@ class ProgressSyncEngine @Inject constructor(
 internal object RemoteProgressKey {
     fun of(localItemId: String, podcastId: String?): Pair<String, String?> =
         if (podcastId == null) localItemId to null else podcastId to localItemId
+}
+
+/**
+ * Reads the `exp` claim of an Audiobookshelf access token (a JWT) so it can be renewed shortly
+ * before it lapses. Tokens without a readable `exp` — legacy pre-2.26 tokens and API keys that
+ * never expire — are treated as never needing a refresh.
+ */
+internal object AccessTokenExpiry {
+    /** Renew this long before expiry, so a request started now cannot outlive its token. */
+    const val REFRESH_MARGIN_MS = 5 * 60 * 1000L
+
+    fun expiresAtMs(token: String): Long? {
+        val parts = token.split('.')
+        if (parts.size != 3) return null
+        return runCatching {
+            val payload = String(java.util.Base64.getUrlDecoder().decode(parts[1].trimEnd('=')))
+            com.google.gson.JsonParser.parseString(payload).asJsonObject
+                .get("exp")?.takeIf { it.isJsonPrimitive }?.asLong
+                ?.times(1000)
+        }.getOrNull()
+    }
+
+    fun needsRefresh(token: String, nowMs: Long): Boolean {
+        val expiresAt = expiresAtMs(token) ?: return false
+        return nowMs >= expiresAt - REFRESH_MARGIN_MS
+    }
 }
 
 internal object LibraryPageMath {

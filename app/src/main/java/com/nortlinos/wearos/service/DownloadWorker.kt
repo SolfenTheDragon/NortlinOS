@@ -112,7 +112,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         setForeground(notification(notificationId, itemId, 0))
         val item = dependencies.libraryRepository().getItem(itemId, originServerUrl)
             ?: throw IOException("Book metadata was not cached")
-        val api = dependencies.apiClient().scopedApi(server.url, server.token)
+        val sessions = dependencies.sessionRepository()
+        val apiClient = dependencies.apiClient()
+        val active = sessions.freshSession(server.url) ?: server
+        val api = apiClient.scopedApi(active.url, active.token)
         val session = item.parentItemId?.let { podcastId ->
             api.startPodcastPlaybackSession(podcastId, itemId)
         } ?: api.startPlaybackSession(itemId)
@@ -142,7 +145,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         ),
                         OFFLINE_COVER_WIDTH_PX
                     ),
-                    server.token,
+                    sessions.freshSession(server.url)?.token ?: server.token,
                     server.url,
                     coverFile,
                     repository.availableBytes(),
@@ -164,14 +167,31 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         tracks.forEachIndexed { position, track ->
             if (isStopped) throw InterruptedException("Download paused")
             val file = File(directory, "track_${track.index}.${extension(track.mimeType)}")
-            downloadTrack(
-                ApiClient.resolveUrl(server.url, track.contentUrl),
-                server.token,
-                server.url,
-                file,
-                repository.availableBytes(),
-                expectedBytes = track.metadata?.size ?: 0
-            )
+            // A large book can take longer than the server's 1-hour access token lifetime, so each
+            // track asks for a token that is still valid, and an expiry mid-request is retried
+            // once with a renewed one.
+            val trackUrl = ApiClient.resolveUrl(server.url, track.contentUrl)
+            val token = sessions.freshSession(server.url)?.token ?: server.token
+            try {
+                downloadTrack(
+                    trackUrl,
+                    token,
+                    server.url,
+                    file,
+                    repository.availableBytes(),
+                    expectedBytes = track.metadata?.size ?: 0
+                )
+            } catch (expired: UnauthorizedException) {
+                if (!sessions.recoverFromUnauthorized(server.url, token)) throw expired
+                downloadTrack(
+                    trackUrl,
+                    sessions.freshSession(server.url)?.token ?: throw expired,
+                    server.url,
+                    file,
+                    repository.availableBytes(),
+                    expectedBytes = track.metadata?.size ?: 0
+                )
+            }
             downloadedTotal += file.length()
             completedTracks += DownloadTrackEntity(
                 itemId = itemId,
@@ -247,6 +267,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 }
                 throw IOException("Server rejected the saved partial download; retry to restart it")
             }
+            if (response.code == 401) throw UnauthorizedException()
             if (!response.isSuccessful) throw IOException("Download failed: HTTP ${response.code}")
             val append = offset > 0 && response.code == 206
             val required = response.body?.contentLength()?.coerceAtLeast(0) ?: 0
@@ -334,3 +355,6 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         private const val CHANNEL_ID = "downloads"
     }
 }
+
+/** A media request was refused because the access token expired; the caller may renew and retry. */
+private class UnauthorizedException : IOException("Download failed: HTTP 401")

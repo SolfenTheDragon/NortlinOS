@@ -1206,7 +1206,8 @@ class PlayerViewModel @Inject constructor(
                             fail("This book is not downloaded and the watch is offline")
                             return@playbackLoad
                         }
-                        val api = apiClient.scopedApi(server.url, server.token)
+                        val activeServer = sessionRepository.freshSession(server.url) ?: server
+                        val api = apiClient.scopedApi(activeServer.url, activeServer.token)
                         val response = runCatching {
                             cached.parentItemId?.let { podcastId ->
                                 api.startPodcastPlaybackSession(podcastId, itemId)
@@ -1725,5 +1726,5 @@ class SettingsViewModel @Inject constructor(
     fun setHomePodcastsVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomePodcastsVisible(visible) }
 
-    fun logout() = sessionRepository.logout()
+    fun logout() = viewModelScope.launch { sessionRepository.signOut() }
 }
