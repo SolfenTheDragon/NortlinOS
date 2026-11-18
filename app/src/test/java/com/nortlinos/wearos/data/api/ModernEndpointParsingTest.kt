@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Payloads shaped like the Audiobookshelf 2.26–2.38 auth and `/api/me/*` responses. */
+/** Payloads shaped like the Audiobookshelf 2.26–2.38 auth, session and `/api/me` responses. */
 class ModernEndpointParsingTest {
     private val gson = Gson()
 
