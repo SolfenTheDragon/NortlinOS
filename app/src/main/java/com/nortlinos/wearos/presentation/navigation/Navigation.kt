@@ -25,6 +25,8 @@ import com.nortlinos.wearos.presentation.screen.RecentPlaybackScreen
 import com.nortlinos.wearos.presentation.screen.SearchScreen
 import com.nortlinos.wearos.presentation.screen.SettingsScreen
 import com.nortlinos.wearos.presentation.screen.StatsScreen
+import com.nortlinos.wearos.presentation.screen.HardwareButtonsScreen
+import com.nortlinos.wearos.presentation.screen.ButtonActionScreen
 import com.nortlinos.wearos.presentation.screen.ThemeScreen
 import com.nortlinos.wearos.presentation.viewmodel.LibraryViewModel
 import com.nortlinos.wearos.presentation.viewmodel.LoginViewModel
@@ -48,6 +50,9 @@ private object Routes {
     const val SETTINGS = "settings"
     const val THEME = "theme"
     const val STATS = "stats"
+    const val BUTTONS = "buttons"
+    const val BUTTON_ACTION = "buttons/{keyCode}"
+    fun buttonAction(keyCode: Int) = "buttons/$keyCode"
     fun items(id: String, origin: String) = "items/${Uri.encode(origin)}/$id"
     fun detail(id: String, origin: String) = "detail/${Uri.encode(origin)}/$id"
     fun episode(id: String, origin: String) = "episode/${Uri.encode(origin)}/$id"
@@ -211,10 +216,23 @@ fun AppNavHost(
             PlayerScreen(playerViewModel, isAmbient)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(settingsViewModel, onTheme = { nav.navigate(Routes.THEME) })
+            SettingsScreen(
+                settingsViewModel,
+                onTheme = { nav.navigate(Routes.THEME) },
+                onButtons = { nav.navigate(Routes.BUTTONS) }
+            )
         }
         composable(Routes.THEME) {
             ThemeScreen(settingsViewModel)
+        }
+        composable(Routes.BUTTONS) {
+            HardwareButtonsScreen(settingsViewModel) { keyCode ->
+                nav.navigate(Routes.buttonAction(keyCode))
+            }
+        }
+        composable(Routes.BUTTON_ACTION) { entry ->
+            val keyCode = entry.arguments?.getString("keyCode")?.toIntOrNull()
+            if (keyCode != null) ButtonActionScreen(settingsViewModel, keyCode)
         }
         composable(Routes.STATS) {
             // Scoped to this destination, so stats load when the screen opens and are dropped

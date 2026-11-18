@@ -20,6 +20,34 @@ private val Context.settingsDataStore by preferencesDataStore("display_settings"
 
 enum class ProgressDisplayMode { CHAPTER, BOOK }
 
+/** The multifunction buttons apps may handle; the power button is reserved for the system. */
+val STEM_KEY_CODES = listOf(
+    android.view.KeyEvent.KEYCODE_STEM_1,
+    android.view.KeyEvent.KEYCODE_STEM_2,
+    android.view.KeyEvent.KEYCODE_STEM_3
+)
+
+/**
+ * What a multifunction hardware button does while NortlinOS is open. [NONE] leaves the press to
+ * the system, so the button keeps whatever the user set it to do in the watch's settings.
+ */
+enum class ButtonAction(val label: String) {
+    NONE("Watch default"),
+    PLAY_PAUSE("Play / pause"),
+    SKIP_BACK("Back 30 seconds"),
+    SKIP_FORWARD("Forward 30 seconds"),
+    PREVIOUS_CHAPTER("Previous chapter"),
+    NEXT_CHAPTER("Next chapter"),
+    ADD_BOOKMARK("Bookmark this spot"),
+    OPEN_PLAYER("Open player");
+
+    companion object {
+        /** Unknown or missing values (e.g. from a newer build) fall back to the system default. */
+        fun fromStored(name: String?): ButtonAction =
+            entries.firstOrNull { it.name == name } ?: NONE
+    }
+}
+
 enum class AccentTheme(val label: String) {
     AMBER("Amber"), TEAL("Teal"), BLUE("Blue"), GREEN("Green"), PURPLE("Purple"), ROSE("Rose"),
     CUSTOM("Custom")
@@ -156,6 +184,24 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     suspend fun setHomeStatsVisible(visible: Boolean) {
         context.settingsDataStore.edit { it[homeStatsKey] = visible }
     }
+
+    /**
+     * The action assigned to each multifunction button, keyed by `KeyEvent.KEYCODE_STEM_*`.
+     * Buttons with no entry do nothing special (see [ButtonAction.NONE]).
+     */
+    val buttonActions: Flow<Map<Int, ButtonAction>> = context.settingsDataStore.data.map { prefs ->
+        STEM_KEY_CODES.associateWith { ButtonAction.fromStored(prefs[buttonActionKey(it)]) }
+            .filterValues { it != ButtonAction.NONE }
+    }
+
+    suspend fun setButtonAction(keyCode: Int, action: ButtonAction) {
+        context.settingsDataStore.edit {
+            if (action == ButtonAction.NONE) it.remove(buttonActionKey(keyCode))
+            else it[buttonActionKey(keyCode)] = action.name
+        }
+    }
+
+    private fun buttonActionKey(keyCode: Int) = stringPreferencesKey("button_action_$keyCode")
 
     /** Asks before starting playback with no headphones connected. Defaults to on. */
     val headphoneCheck: Flow<Boolean> = context.settingsDataStore.data.map {

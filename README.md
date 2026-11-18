@@ -55,6 +55,12 @@ phone at home, and pick up exactly where you left off on any device.
   Audiobookshelf's listening stats. If the watch and another
   device both moved on while out of touch, NortlinOS asks which position to keep instead of
   guessing.
+- **Use your watch's extra buttons** (Settings → **Hardware buttons**, shown only on watches
+  that have buttons besides the power button). Give each one an action: play/pause, back or
+  forward 30 seconds, previous or next chapter, bookmark this spot, or open the player. The
+  buttons do this while NortlinOS is open; elsewhere they keep their usual function. A short
+  buzz confirms each press, and a different buzz means no book is loaded. Pressing play/pause
+  with a book paused opens the player first, so the headphone check can ask before it starts.
 - **Check your listening stats.** **Listening stats** on the main menu opens on today's
   listening time and your current streak, with a bar chart of the last 7 days underneath.
   Scroll for all-time listening, days listened, finished books and episodes, your most-listened

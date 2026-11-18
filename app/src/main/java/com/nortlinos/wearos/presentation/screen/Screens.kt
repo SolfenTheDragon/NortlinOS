@@ -89,6 +89,9 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.ui.platform.LocalContext
 import com.nortlinos.wearos.presentation.viewmodel.OutputPrompt
 import com.nortlinos.wearos.presentation.viewmodel.StatsViewModel
+import com.nortlinos.wearos.presentation.HardwareButton
+import com.nortlinos.wearos.presentation.HardwareButtons
+import com.nortlinos.wearos.data.local.ButtonAction
 import com.nortlinos.wearos.data.repository.DayTotal
 import com.nortlinos.wearos.data.repository.ListeningStatsMath
 import com.nortlinos.wearos.presentation.viewmodel.PlaybackPosition
@@ -2704,6 +2707,68 @@ private fun PrivacyPolicyChip() {
     )
 }
 
+private fun buttonSummary(
+    buttons: List<HardwareButton>,
+    actions: Map<Int, ButtonAction>
+): String {
+    val assigned = buttons.count { it.keyCode in actions }
+    return when {
+        assigned == 0 -> "Not set"
+        buttons.size == 1 -> actions.getValue(buttons.single().keyCode).label
+        else -> "$assigned of ${buttons.size} set"
+    }
+}
+
+/** Lists this watch's multifunction buttons with what each one does in the app. */
+@Composable
+fun HardwareButtonsScreen(viewModel: SettingsViewModel, onButton: (Int) -> Unit) {
+    val actions by viewModel.buttonActions.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val buttons = remember(context) { HardwareButtons.available(context) }
+    WearList {
+        item { ScreenTitle("Hardware buttons") }
+        item {
+            SupportingText(
+                "Used while NortlinOS is open. Elsewhere, buttons keep their usual function."
+            )
+        }
+        if (buttons.isEmpty()) {
+            item { EmptyState("No extra buttons", "This watch has no buttons apps can use.") }
+        }
+        items(buttons, key = { it.keyCode }) { button ->
+            NavigationChip(
+                button.label,
+                (actions[button.keyCode] ?: ButtonAction.NONE).label,
+                Icons.Default.Watch
+            ) { onButton(button.keyCode) }
+        }
+    }
+}
+
+/** Picks the action for one button. Each choice applies immediately, like other settings. */
+@Composable
+fun ButtonActionScreen(viewModel: SettingsViewModel, keyCode: Int) {
+    val actions by viewModel.buttonActions.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val label = remember(context, keyCode) {
+        HardwareButtons.available(context).firstOrNull { it.keyCode == keyCode }?.label ?: "Button"
+    }
+    val selected = actions[keyCode] ?: ButtonAction.NONE
+    WearList {
+        item { ScreenTitle(label) }
+        items(ButtonAction.entries, key = { it.name }) { action ->
+            ChoiceChip(
+                label = action.label,
+                selected = action == selected,
+                onClick = { viewModel.setButtonAction(keyCode, action) }
+            )
+        }
+        item {
+            SupportingText("Player actions apply to the book that is loaded.")
+        }
+    }
+}
+
 @Composable
 fun ThemeScreen(viewModel: SettingsViewModel) {
     val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
@@ -2762,7 +2827,11 @@ private fun ThemeChip(label: String, palette: AccentPalette, selected: Boolean, 
 }
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onTheme: () -> Unit,
+    onButtons: () -> Unit
+) {
     val mode by viewModel.mode.collectAsStateWithLifecycle()
     val storage by viewModel.storageStats.collectAsStateWithLifecycle()
     val downloadedBooks by viewModel.downloadedBooks.collectAsStateWithLifecycle()
@@ -2772,6 +2841,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
     val podcastsVisible by viewModel.homePodcastsVisible.collectAsStateWithLifecycle()
     val statsVisible by viewModel.homeStatsVisible.collectAsStateWithLifecycle()
     val accent by viewModel.accentTheme.collectAsStateWithLifecycle()
+    val buttonActions by viewModel.buttonActions.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val hardwareButtons = remember(context) { HardwareButtons.available(context) }
     val precache by viewModel.precacheLibraries.collectAsStateWithLifecycle()
     val formatDescriptions by viewModel.formatDescriptions.collectAsStateWithLifecycle()
     val headphoneCheck by viewModel.headphoneCheck.collectAsStateWithLifecycle()
@@ -2779,6 +2851,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onTheme: () -> Unit) {
         item { ScreenTitle("Settings") }
         item { PrivacyPolicyChip() }
         item { NavigationChip("Theme", accent.label, Icons.Default.Palette, onTheme) }
+        // Most watches have only the power button, which apps cannot use; offer this only where
+        // there is something to configure.
+        if (hardwareButtons.isNotEmpty()) {
+            item {
+                NavigationChip(
+                    "Hardware buttons",
+                    buttonSummary(hardwareButtons, buttonActions),
+                    Icons.Default.Watch,
+                    onButtons
+                )
+            }
+        }
         item { SupportingText("Downloads") }
         item {
             SupportingText(

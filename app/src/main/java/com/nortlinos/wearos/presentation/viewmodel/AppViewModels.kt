@@ -18,6 +18,7 @@ import com.nortlinos.wearos.data.local.LibraryEntity
 import com.nortlinos.wearos.data.local.LibraryItemEntity
 import com.nortlinos.wearos.data.local.ProgressDisplayMode
 import com.nortlinos.wearos.data.local.AccentTheme
+import com.nortlinos.wearos.data.local.ButtonAction
 import com.nortlinos.wearos.presentation.theme.AccentColors
 import com.nortlinos.wearos.data.local.SettingsStore
 import com.nortlinos.wearos.data.api.AudioBookmarkDto
@@ -1696,6 +1697,8 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val homeStatsVisible = settingsStore.homeStatsVisible
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val buttonActions = settingsStore.buttonActions
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
     val formatDescriptions = settingsStore.formatDescriptions
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val accentTheme = settingsStore.accentTheme
@@ -1739,6 +1742,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setHomeStatsVisible(visible: Boolean) =
         viewModelScope.launch { settingsStore.setHomeStatsVisible(visible) }
+
+    fun setButtonAction(keyCode: Int, action: ButtonAction) =
+        viewModelScope.launch { settingsStore.setButtonAction(keyCode, action) }
 
     fun logout() = viewModelScope.launch { sessionRepository.signOut() }
 }
