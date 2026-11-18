@@ -117,6 +117,14 @@ interface AudiobookshelfApi {
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
+    /** All of the user's media progress (Audiobookshelf 2.36+); `404` on older servers. */
+    @GET("api/me/progress")
+    suspend fun getAllProgress(): Response<AllProgressResponse>
+
+    /** The user's bookmarks for one item (Audiobookshelf 2.36+); `404` on older servers. */
+    @GET("api/me/bookmarks/{id}")
+    suspend fun getBookmarks(@Path("id") itemId: String): Response<BookmarksResponse>
+
     @PATCH("api/me/progress/{id}")
     suspend fun updateProgress(
         @Path("id") itemId: String,
@@ -193,6 +201,8 @@ data class DeviceInfoDto(
     val model: String,
     val sdkVersion: Int
 )
+data class AllProgressResponse(val mediaProgress: List<MediaProgressDto> = emptyList())
+data class BookmarksResponse(val bookmarks: List<AudioBookmarkDto> = emptyList())
 data class SessionSyncRequest(
     val currentTime: Double,
     val timeListened: Double,

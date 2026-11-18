@@ -14,6 +14,7 @@ import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 import com.nortlinos.wearos.data.api.ApiClient
 import com.nortlinos.wearos.data.api.AudioBookmarkDto
+import com.nortlinos.wearos.data.api.MediaProgressDto
 import com.nortlinos.wearos.data.api.AudiobookshelfApi
 import com.nortlinos.wearos.data.api.BookmarkRequest
 import com.nortlinos.wearos.data.api.LoginRequest
@@ -60,6 +61,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -1071,9 +1073,19 @@ class BookmarkRepository @Inject constructor(
         if (!connectivityMonitor.hasActiveNetwork()) return@withContext Result.failure(NoNetworkException())
         runCatching {
             val server = sessionRepository.requireServer()
-            val response = apiClient.scopedApi(server.url, server.token).getCurrentUser()
-            if (!response.isSuccessful) throw IOException("Bookmarks: HTTP ${response.code()}")
-            response.body().requireBody().bookmarks
+            val api = apiClient.scopedApi(server.url, server.token)
+            // Audiobookshelf 2.36+ serves one item's bookmarks directly. Older servers answer
+            // 404, and the whole `/api/me` user record is the only place bookmarks live there.
+            val scoped = api.getBookmarks(itemId)
+            val bookmarks = if (scoped.code() == 404) {
+                val response = api.getCurrentUser()
+                if (!response.isSuccessful) throw IOException("Bookmarks: HTTP ${response.code()}")
+                response.body().requireBody().bookmarks
+            } else {
+                if (!scoped.isSuccessful) throw IOException("Bookmarks: HTTP ${scoped.code()}")
+                scoped.body().requireBody().bookmarks
+            }
+            bookmarks
                 .filter { it.libraryItemId == itemId }
                 .sortedBy { it.time }
         }
@@ -1123,21 +1135,13 @@ class ProgressSyncEngine @Inject constructor(
         var pulled = 0
         var conflicts = 0
         val localEntries = progressDao.allForServer(activeServerUrl)
-        val currentUserResponse = scopedApi.getCurrentUser()
-        if (!currentUserResponse.isSuccessful) {
-            if (currentUserResponse.code() == 401 || currentUserResponse.code() == 403) {
-                sessionRepository.recoverFromUnauthorized(activeServerUrl, activeServer.token)
-            }
-            throw HttpException(currentUserResponse)
-        }
-        val remoteEntries = currentUserResponse.body().requireBody()
-            .mediaProgress
+        val remoteEntries = fetchRemoteProgress(scopedApi, activeServerUrl, activeServer.token)
             .associateBy { it.libraryItemId to it.episodeId }
 
         for (local in localEntries) {
             val localItem = libraryDao.getItem(local.itemId, activeServerUrl)
             val podcastId = localItem?.parentItemId
-            // `/api/me` already carries podcast-episode progress (keyed by podcast + episode), so
+            // The progress list already carries podcast-episode progress (keyed by podcast + episode), so
             // no per-episode request is needed: one GET covers every local row.
             val remote = remoteEntries[RemoteProgressKey.of(local.itemId, podcastId)]
             val remoteUpdatedAt = remote?.effectiveUpdatedAt ?: 0L
@@ -1217,6 +1221,34 @@ class ProgressSyncEngine @Inject constructor(
             pulled += remoteOnly.size
         }
         Result(pushed, pulled, conflicts)
+    }
+
+    /**
+     * Every progress row the server holds for this user. Audiobookshelf 2.36+ has a dedicated
+     * `/api/me/progress`; older servers answer it with 404 and only expose progress inside the
+     * full `/api/me` user record, which also drags along bookmarks, permissions and settings.
+     */
+    private suspend fun fetchRemoteProgress(
+        api: AudiobookshelfApi,
+        serverUrl: String,
+        token: String
+    ): List<MediaProgressDto> {
+        val dedicated = api.getAllProgress()
+        if (dedicated.code() != 404) {
+            ensureSuccess(dedicated, serverUrl, token)
+            return dedicated.body().requireBody().mediaProgress
+        }
+        val legacy = api.getCurrentUser()
+        ensureSuccess(legacy, serverUrl, token)
+        return legacy.body().requireBody().mediaProgress
+    }
+
+    private suspend fun ensureSuccess(response: Response<*>, serverUrl: String, token: String) {
+        if (response.isSuccessful) return
+        if (response.code() == 401 || response.code() == 403) {
+            sessionRepository.recoverFromUnauthorized(serverUrl, token)
+        }
+        throw HttpException(response)
     }
 }
 
