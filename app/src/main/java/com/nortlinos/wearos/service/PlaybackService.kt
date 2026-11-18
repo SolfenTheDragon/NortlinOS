@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -32,6 +33,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.nortlinos.wearos.data.api.ApiClient
 import com.nortlinos.wearos.data.local.DownloadedBookData
 import com.nortlinos.wearos.data.model.PlaybackSession
+import com.nortlinos.wearos.data.repository.ListeningSessionRepository
 import com.nortlinos.wearos.data.repository.ProgressRepository
 import com.nortlinos.wearos.data.repository.SessionRepository
 import com.nortlinos.wearos.data.repository.ServerIdentity
@@ -52,6 +54,7 @@ import okhttp3.OkHttpClient
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
     @Inject lateinit var progressRepository: ProgressRepository
+    @Inject lateinit var listeningSessions: ListeningSessionRepository
     @Inject lateinit var sessionRepository: SessionRepository
     @Inject lateinit var connectivityMonitor: ConnectivityMonitor
     @Inject lateinit var sleepTimerManager: SleepTimerManager
@@ -67,6 +70,16 @@ class PlaybackService : MediaSessionService() {
     private var tileCoverItemId: String? = null
     private var tileCoverJob: Job? = null
     private var playingSince = 0L
+
+    /**
+     * Real time (elapsedRealtime) since which audio has been playing and not yet credited to a
+     * listening session, or 0 while not playing. Elapsed real time keeps counting while the CPU
+     * sleeps under audio offload, so no wakeups are needed to measure listening.
+     */
+    private var listeningSince = 0L
+
+    /** The last position written, and when; listening time is credited against it. */
+    private var lastRecorded: Pair<CurrentProgress, Long>? = null
 
     // Configures ExoPlayer's authenticated resolving data source, audiobook buffering, and audio
     // offload, all of which are unstable Media3 APIs.
@@ -192,10 +205,12 @@ class PlaybackService : MediaSessionService() {
             if (isPlaying) playingSince = System.currentTimeMillis()
             publishTileSnapshot()
             if (isPlaying) {
+                if (listeningSince == 0L) listeningSince = SystemClock.elapsedRealtime()
                 startProgressTicker()
             } else {
                 progressJob?.cancel()
                 progressJob = null
+                // Buffering also lands here, so a stalled stream stops counting as listening.
                 flushProgress(syncNow = true)
             }
         }
@@ -214,6 +229,7 @@ class PlaybackService : MediaSessionService() {
             // loaded with a new book, where the position is still being established.
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) flushProgress()
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                creditPreviousBook()
                 session?.setSessionActivity(openAppIntent())
                 publishTileSnapshot()
                 saveTileCover()
@@ -285,11 +301,60 @@ class PlaybackService : MediaSessionService() {
 
     /** Snapshots the player on the main thread, then writes off it. */
     private fun flushProgress(syncNow: Boolean = false) {
-        val progress = currentProgress() ?: return
+        val snapshot = snapshotProgress() ?: return
         scope.launch {
             kotlinx.coroutines.withContext(Dispatchers.IO) {
-                persistProgress(progress, syncNow)
+                persistProgress(snapshot, syncNow)
             }
+        }
+    }
+
+    /**
+     * Reads the position and takes the listening time accumulated since the last write. Main
+     * thread only, like every other reader of [listeningSince].
+     */
+    private fun snapshotProgress(): ProgressSnapshot? {
+        // Whatever callback notices a new book first, earlier listening stays with the old one.
+        creditPreviousBook()
+        val progress = currentProgress() ?: return null
+        val listened = takeListening(keepCounting = session?.player?.isPlaying == true)
+        val timestamp = System.currentTimeMillis()
+        lastRecorded = progress to timestamp
+        return ProgressSnapshot(progress, listened, timestamp)
+    }
+
+    private fun takeListening(keepCounting: Boolean): Long {
+        val since = listeningSince
+        if (since == 0L) return 0L
+        val now = SystemClock.elapsedRealtime()
+        listeningSince = if (keepCounting) now else 0L
+        return (now - since).coerceAtLeast(0L)
+    }
+
+    /**
+     * When a different book is loaded mid-listen, the time since the last write still belongs to
+     * the book that was playing. It is recorded at that book's last written position and
+     * timestamp, so the session never claims a position newer than its progress.
+     */
+    private fun creditPreviousBook() {
+        val (previous, recordedAt) = lastRecorded ?: return
+        val current = currentProgress()
+        if (current != null && current.itemId == previous.itemId &&
+            current.originServerUrl == previous.originServerUrl
+        ) return
+        val listened = takeListening(keepCounting = session?.player?.isPlaying == true)
+        lastRecorded = null
+        if (listened == 0L) return
+        scope.launch(Dispatchers.IO) {
+            listeningSessions.record(
+                itemId = previous.itemId,
+                originServerUrl = previous.originServerUrl,
+                streamed = previous.streamed,
+                positionMs = previous.positionMs,
+                durationMs = previous.durationMs,
+                listenedMs = listened,
+                timestamp = recordedAt
+            )
         }
     }
 
@@ -308,7 +373,9 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         tileCoverJob?.cancel()
         val snapshot = tileSnapshot(playing = false)
-        val progress = currentProgress()
+        // The player is about to be released, so whatever it was playing stops counting here.
+        val progress = snapshotProgress()
+        listeningSince = 0L
         runBlocking(Dispatchers.IO) {
             // Queued behind any pending tile write so the final "paused" state lands last.
             snapshot?.let {
@@ -357,14 +424,12 @@ class PlaybackService : MediaSessionService() {
         progressJob = scope.launch {
             while (true) {
                 delay(PROGRESS_TICK_MS)
-                if (session?.player?.isPlaying == true) persistCurrentProgress()
+                if (session?.player?.isPlaying == true) {
+                    val snapshot = snapshotProgress() ?: continue
+                    kotlinx.coroutines.withContext(Dispatchers.IO) { persistProgress(snapshot) }
+                }
             }
         }
-    }
-
-    private suspend fun persistCurrentProgress() {
-        val progress = currentProgress() ?: return
-        kotlinx.coroutines.withContext(Dispatchers.IO) { persistProgress(progress) }
     }
 
     private fun currentProgress(): CurrentProgress? {
@@ -372,9 +437,13 @@ class PlaybackService : MediaSessionService() {
         val extras = player.currentMediaItem?.mediaMetadata?.extras ?: return null
         val itemId = extras.getString(EXTRA_ITEM_ID) ?: return null
         val originServerUrl = extras.getString(EXTRA_ORIGIN_SERVER_URL) ?: return null
+        val uri = player.currentMediaItem?.let {
+            it.requestMetadata.mediaUri ?: it.localConfiguration?.uri
+        }
         return CurrentProgress(
             itemId = itemId,
             originServerUrl = originServerUrl,
+            streamed = uri?.scheme == "http" || uri?.scheme == "https",
             positionMs = extras.getLong(EXTRA_TRACK_OFFSET_MS) +
                 player.currentPosition.coerceAtLeast(0),
             durationMs = extras.getLong(EXTRA_BOOK_DURATION_MS)
@@ -388,19 +457,39 @@ class PlaybackService : MediaSessionService() {
      * promptly when playback stops. Without this distinction every 10-second tick during playback
      * would wake the radio for a network sync, draining battery far faster than necessary.
      */
-    private suspend fun persistProgress(progress: CurrentProgress, syncNow: Boolean = false) {
+    private suspend fun persistProgress(snapshot: ProgressSnapshot, syncNow: Boolean = false) {
+        val progress = snapshot.progress
+        // One timestamp for both rows: a session's position must never look newer than the
+        // progress it was recorded with (see ListeningSessionRepository).
         progressRepository.record(
             itemId = progress.itemId,
             originServerUrl = progress.originServerUrl,
             positionMs = progress.positionMs,
-            durationMs = progress.durationMs
+            durationMs = progress.durationMs,
+            timestamp = snapshot.timestamp
+        )
+        listeningSessions.record(
+            itemId = progress.itemId,
+            originServerUrl = progress.originServerUrl,
+            streamed = progress.streamed,
+            positionMs = progress.positionMs,
+            durationMs = progress.durationMs,
+            listenedMs = snapshot.listenedMs,
+            timestamp = snapshot.timestamp
         )
         if (syncNow) connectivityMonitor.enqueueImmediateSync()
     }
 
+    private data class ProgressSnapshot(
+        val progress: CurrentProgress,
+        val listenedMs: Long,
+        val timestamp: Long
+    )
+
     private data class CurrentProgress(
         val itemId: String,
         val originServerUrl: String,
+        val streamed: Boolean,
         val positionMs: Long,
         val durationMs: Long
     )

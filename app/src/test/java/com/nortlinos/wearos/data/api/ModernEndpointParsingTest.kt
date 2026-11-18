@@ -48,6 +48,34 @@ class ModernEndpointParsingTest {
     }
 
     @Test
+    fun localSessionUsesServerFieldNamesAndUnits() {
+        val session = LocalSessionDto(
+            id = "3f2b", libraryItemId = "pod1", episodeId = "ep1", mediaType = "podcast",
+            displayTitle = "Episode", displayAuthor = null, duration = 3600.0,
+            playMethod = LocalSessionDto.PLAY_METHOD_LOCAL, mediaPlayer = MEDIA_PLAYER,
+            startTime = 60.0, currentTime = 70.0, timeListening = 10.0,
+            startedAt = 1_700_000_000_000, updatedAt = 1_700_000_010_000
+        )
+        val device = DeviceInfoDto("dev-1", "NortlinOS", "1.0", "Google", "Pixel Watch 4", 36)
+        val json = gson.toJson(LocalSessionsRequest(device, listOf(session)))
+        for (key in listOf(
+            "\"sessions\"", "\"deviceInfo\"", "\"libraryItemId\":\"pod1\"", "\"episodeId\":\"ep1\"",
+            "\"timeListening\":10.0", "\"playMethod\":3", "\"updatedAt\":1700000010000"
+        )) assertTrue(key, json.contains(key))
+    }
+
+    @Test
+    fun parsesLocalSessionResults() {
+        val json = """
+            {"results":[{"id":"a","success":true,"progressSynced":false},
+                        {"id":"b","success":false,"error":"Media item not found"}]}
+        """
+        val results = gson.fromJson(json, LocalSessionsResponse::class.java).results
+        assertEquals(listOf("a", "b"), results.map { it.id })
+        assertEquals("Media item not found", results[1].error)
+    }
+
+    @Test
     fun playbackRequestSendsDeviceInfo() {
         val request = PlaybackRequest(
             deviceInfo = DeviceInfoDto("dev-1", "NortlinOS", "1.0", "Google", "Pixel Watch 4", 36)

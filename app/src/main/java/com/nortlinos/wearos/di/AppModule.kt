@@ -7,6 +7,7 @@ import com.nortlinos.wearos.data.api.ApiClient
 import com.nortlinos.wearos.data.local.AppDatabase
 import com.nortlinos.wearos.data.local.DownloadDao
 import com.nortlinos.wearos.data.local.LibraryDao
+import com.nortlinos.wearos.data.local.ListeningSessionDao
 import com.nortlinos.wearos.data.local.ProgressDao
 import com.nortlinos.wearos.service.ExpiryAlarm
 import com.nortlinos.wearos.service.SystemExpiryAlarm
@@ -71,6 +72,8 @@ object AppModule {
     @Provides fun libraryDao(database: AppDatabase): LibraryDao = database.libraryDao()
     @Provides fun downloadDao(database: AppDatabase): DownloadDao = database.downloadDao()
     @Provides fun progressDao(database: AppDatabase): ProgressDao = database.progressDao()
+    @Provides fun listeningSessionDao(database: AppDatabase): ListeningSessionDao =
+        database.listeningSessionDao()
 
     @Provides
     @Singleton

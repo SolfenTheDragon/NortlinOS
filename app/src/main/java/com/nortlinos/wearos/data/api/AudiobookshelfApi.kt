@@ -114,6 +114,15 @@ interface AudiobookshelfApi {
     @POST("api/session/{id}/close")
     suspend fun closeSession(@Path("id") sessionId: String): Response<ResponseBody>
 
+    /**
+     * Uploads listening sessions recorded on the watch. The server creates each one by id, or
+     * updates it if that id was uploaded before, and counts its `timeListening` toward listening
+     * stats. It also applies the session's position to media progress, but only when the
+     * session is newer than the server's progress.
+     */
+    @POST("api/session/local-all")
+    suspend fun syncLocalSessions(@Body body: LocalSessionsRequest): Response<LocalSessionsResponse>
+
     @GET("api/me/progress/{id}")
     suspend fun getProgress(@Path("id") itemId: String): Response<MediaProgressDto>
 
@@ -151,6 +160,9 @@ interface AudiobookshelfApi {
     ): Response<Unit>
 }
 
+/** How Audiobookshelf labels the player in this app's sessions. */
+const val MEDIA_PLAYER = "wearos-app"
+
 data class LoginRequest(val username: String, val password: String)
 data class ServerStatusDto(
     val app: String? = null,
@@ -182,7 +194,7 @@ data class PlaybackRequest(
      */
     val deviceInfo: DeviceInfoDto? = null,
     val forceDirectPlay: Boolean = true,
-    val mediaPlayer: String = "wearos-app",
+    val mediaPlayer: String = MEDIA_PLAYER,
     val supportedMimeTypes: List<String> = listOf(
         "audio/mpeg",
         "audio/mp4",
@@ -200,6 +212,39 @@ data class DeviceInfoDto(
     val manufacturer: String,
     val model: String,
     val sdkVersion: Int
+)
+data class LocalSessionsRequest(
+    val deviceInfo: DeviceInfoDto,
+    val sessions: List<LocalSessionDto>
+)
+/** Times are seconds, timestamps epoch milliseconds, as Audiobookshelf's `PlaybackSession`. */
+data class LocalSessionDto(
+    val id: String,
+    val libraryItemId: String,
+    val episodeId: String?,
+    val mediaType: String,
+    val displayTitle: String?,
+    val displayAuthor: String?,
+    val duration: Double,
+    val playMethod: Int,
+    val mediaPlayer: String,
+    val startTime: Double,
+    val currentTime: Double,
+    val timeListening: Double,
+    val startedAt: Long,
+    val updatedAt: Long
+) {
+    companion object {
+        /** Audiobookshelf's `PlayMethod` values. */
+        const val PLAY_METHOD_DIRECT_PLAY = 0
+        const val PLAY_METHOD_LOCAL = 3
+    }
+}
+data class LocalSessionsResponse(val results: List<LocalSessionResult> = emptyList())
+data class LocalSessionResult(
+    val id: String? = null,
+    val success: Boolean = false,
+    val error: String? = null
 )
 data class AllProgressResponse(val mediaProgress: List<MediaProgressDto> = emptyList())
 data class BookmarksResponse(val bookmarks: List<AudioBookmarkDto> = emptyList())

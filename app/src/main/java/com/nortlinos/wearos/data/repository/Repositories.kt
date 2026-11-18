@@ -1123,7 +1123,8 @@ class ProgressSyncEngine @Inject constructor(
     private val apiClient: ApiClient,
     private val progressDao: ProgressDao,
     private val libraryDao: LibraryDao,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val listeningSessions: ListeningSessionRepository
 ) {
     data class Result(val pushed: Int, val pulled: Int, val conflicts: Int)
 
@@ -1220,6 +1221,10 @@ class ProgressSyncEngine @Inject constructor(
             progressDao.upsertAll(remoteOnly)
             pulled += remoteOnly.size
         }
+        // Strictly after progress: by now the server's progress is at least as new as any
+        // session, so uploading sessions cannot make the server look newer than the watch and
+        // trip a false conflict on the next sync.
+        listeningSessions.push(scopedApi, activeServerUrl)
         Result(pushed, pulled, conflicts)
     }
 

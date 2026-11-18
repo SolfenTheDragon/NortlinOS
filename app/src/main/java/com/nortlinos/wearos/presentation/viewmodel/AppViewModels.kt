@@ -1219,6 +1219,11 @@ class PlayerViewModel @Inject constructor(
                             fail("Unable to start streaming")
                             return@playbackLoad
                         }
+                        // Direct-play track URLs do not depend on the server's session. Listening
+                        // time is reported through the watch's own sessions (which also cover
+                        // offline listening), so close this one rather than leave it open and
+                        // empty on the server.
+                        launch { runCatching { api.closeSession(playback.id) } }
                         title = cached.title
                         author = cached.author
                         mediaItems = PlaybackService.remoteMediaItems(

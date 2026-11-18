@@ -23,7 +23,8 @@ preferences may be included in Android backup.
 ## How information is used and shared
 
 The app uses this information only to sign in to the server you selected, display your library,
-stream or download media, and synchronize playback progress and bookmarks with that server.
+stream or download media, and synchronize playback progress, bookmarks, and listening sessions (when and for how long you
+listened to each book or episode) with that server.
 Credentials, tokens, library content, and playback data are sent to your selected Audiobookshelf
 server as needed for those features. When playback or a download starts, the app also tells that
 server the watch's manufacturer, model, Android version, the NortlinOS version, and a random

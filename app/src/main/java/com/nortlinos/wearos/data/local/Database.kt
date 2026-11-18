@@ -8,6 +8,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -129,6 +130,30 @@ data class ProgressEntity(
     val dirty: Boolean,
     val conflictPositionMs: Long? = null,
     val conflictUpdatedAt: Long? = null
+)
+
+/**
+ * One stretch of listening, kept until the server has it. Audiobookshelf builds listening time
+ * and stats from playback sessions, not from progress, so without these the watch's listening
+ * never shows up there. Recorded locally for downloaded and streamed books alike, so offline
+ * listening counts too, and uploaded in batches alongside progress sync.
+ */
+@Entity(
+    tableName = "listening_sessions",
+    indices = [Index(value = ["itemId", "originServerUrl"])]
+)
+data class ListeningSessionEntity(
+    @PrimaryKey val id: String,
+    val itemId: String,
+    val originServerUrl: String,
+    val streamed: Boolean,
+    val startPositionMs: Long,
+    val positionMs: Long,
+    val durationMs: Long,
+    val listenedMs: Long,
+    val startedAt: Long,
+    val updatedAt: Long,
+    val dirty: Boolean
 )
 
 data class RecentPlaybackItem(
@@ -385,6 +410,40 @@ interface ProgressDao {
     ): Int
 }
 
+@Dao
+interface ListeningSessionDao {
+    @Query(
+        """SELECT * FROM listening_sessions
+           WHERE itemId = :itemId AND originServerUrl = :originServerUrl
+           ORDER BY updatedAt DESC LIMIT 1"""
+    )
+    suspend fun latest(itemId: String, originServerUrl: String): ListeningSessionEntity?
+
+    @Upsert
+    suspend fun upsert(session: ListeningSessionEntity)
+
+    @Query(
+        """SELECT * FROM listening_sessions
+           WHERE originServerUrl = :originServerUrl AND dirty = 1 AND listenedMs > 0
+           ORDER BY updatedAt LIMIT :limit"""
+    )
+    suspend fun pending(originServerUrl: String, limit: Int): List<ListeningSessionEntity>
+
+    @Query(
+        """UPDATE listening_sessions SET dirty = 0
+           WHERE id = :id AND updatedAt = :expectedUpdatedAt"""
+    )
+    suspend fun markCleanIfUnchanged(id: String, expectedUpdatedAt: Long): Int
+
+    /** Sessions already on the server that can no longer be continued. */
+    @Query("DELETE FROM listening_sessions WHERE dirty = 0 AND updatedAt < :before")
+    suspend fun deleteSyncedBefore(before: Long): Int
+
+    /** Sessions that never accumulated listening time and can no longer be continued. */
+    @Query("DELETE FROM listening_sessions WHERE listenedMs = 0 AND updatedAt < :before")
+    suspend fun deleteEmptyBefore(before: Long): Int
+}
+
 @Database(
     entities = [
         LibraryEntity::class,
@@ -392,15 +451,17 @@ interface ProgressDao {
         ChapterEntity::class,
         DownloadedItemEntity::class,
         DownloadTrackEntity::class,
-        ProgressEntity::class
+        ProgressEntity::class,
+        ListeningSessionEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun libraryDao(): LibraryDao
     abstract fun downloadDao(): DownloadDao
     abstract fun progressDao(): ProgressDao
+    abstract fun listeningSessionDao(): ListeningSessionDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -576,9 +637,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `listening_sessions` (
+                        `id` TEXT NOT NULL,
+                        `itemId` TEXT NOT NULL,
+                        `originServerUrl` TEXT NOT NULL,
+                        `streamed` INTEGER NOT NULL,
+                        `startPositionMs` INTEGER NOT NULL,
+                        `positionMs` INTEGER NOT NULL,
+                        `durationMs` INTEGER NOT NULL,
+                        `listenedMs` INTEGER NOT NULL,
+                        `startedAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `dirty` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`))"""
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_listening_sessions_itemId_originServerUrl` " +
+                        "ON `listening_sessions` (`itemId`, `originServerUrl`)"
+                )
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "audiobookshelf.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
     }
 }
